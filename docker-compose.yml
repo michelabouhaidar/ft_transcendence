@@ -1,0 +1,81 @@
+services:
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    container_name: ${CONTAINER_NAME_DB}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ${DB_DATA_DIR}:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HOST_PORT}:${POSTGRES_PORT}"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: ${CONTAINER_NAME_BACKEND}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${BACKEND_PORT}
+      APP_URL: ${APP_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
+      SEED_SA_EMAIL: ${SEED_SA_EMAIL}
+      SEED_SA_PASSWORD: ${SEED_SA_PASSWORD}
+    volumes:
+      - ${UPLOADS_DATA_DIR}:/app/uploads
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: ${CONTAINER_NAME_FRONTEND}
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: ${CONTAINER_NAME_NGINX}
+    restart: unless-stopped
+    environment:
+      HTTPS_PORT: ${HTTPS_PORT}
+      BACKEND_HOST: ${BACKEND_HOST}
+      BACKEND_PORT: ${BACKEND_PORT}
+      FRONTEND_HOST: ${FRONTEND_HOST}
+      FRONTEND_PORT: ${FRONTEND_PORT}
+    ports:
+      - "${HTTPS_PORT}:${NGINX_HTTPS_PORT}"
+    volumes:
+      - ${CERTS_DATA_DIR}:/etc/nginx/certs
+    networks:
+      - app-network
+    depends_on:
+      - backend
+      - frontend
+
+networks:
+  app-network:
+    name: ${NETWORK_NAME}
+    driver: bridge
