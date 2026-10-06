@@ -346,7 +346,7 @@ Rules:
 | **NFR-08** | Clear schema and relations (p. 9) | Prisma schema, normalized relations, ERD documentation. |
 | **NFR-09** | Secure sign-up/login, hashed + salted (p. 9) | Argon2id password hashing, email verification, account lockout (§6.1, §7.7). |
 | **NFR-10** | Validation front **and** back (p. 9) | Shared Zod schemas enforcing input constraints on frontend and backend (§7.6). |
-| **NFR-11** | HTTPS for every connection to the backend (p. 9) | nginx TLS termination on port 8443, port 8080 HTTP redirect, WSS; Mailpit UI secured behind nginx basic authentication. Only nginx exposes host ports. |
+| **NFR-11** | HTTPS for every connection to the backend (p. 9) | nginx TLS termination on port 8443, WSS. Only nginx exposes host ports exclusively over HTTPS. |
 | **NFR-12** | Git: all members, clear commits (p. 8) | Structured feature branches, pull requests, clear commit messages across team members. |
 | **NFR-13** | Offline evaluation | Fonts, icons, and client libraries bundled locally; Mailpit container replaces external SMTP service. |
 
