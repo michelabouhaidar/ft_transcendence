@@ -1,0 +1,20 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Production build artifacts
+dist/
+**/dist/
+build/
+**/build/
+
+# Runtime and local storage
+*.log
+.DS_Store
+backups/
