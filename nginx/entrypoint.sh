@@ -22,5 +22,11 @@ else
   echo "[Nginx Entrypoint] Existing TLS certificate found."
 fi
 
+# Configure Basic Auth for Prometheus
+if [ -n "${PROMETHEUS_USER}" ] && [ -n "${PROMETHEUS_PASSWORD}" ]; then
+  echo "[Nginx Entrypoint] Configuring Basic Auth credentials for Prometheus (${PROMETHEUS_USER})..."
+  htpasswd -bc /etc/nginx/.htpasswd "${PROMETHEUS_USER}" "${PROMETHEUS_PASSWORD}"
+fi
+
 echo "[Nginx Entrypoint] Starting Nginx reverse proxy over HTTPS..."
 exec nginx -g "daemon off;"
