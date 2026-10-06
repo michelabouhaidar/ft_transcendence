@@ -1,3 +1,8 @@
+# ==============================================================================
+# Trenno (ft_transcendence) — Makefile
+# Single-command Docker Orchestration and VM Volume Management
+# ==============================================================================
+
 ENV_FILE ?= .env
 
 ifneq (,$(wildcard $(ENV_FILE)))
@@ -8,8 +13,9 @@ endif
 COMPOSE = docker compose --env-file $(ENV_FILE)
 
 .PHONY: all build rebuild up up-build down start stop restart re pause unpause \
-        ps status logs logs-backend logs-frontend logs-db logs-nginx top \
-        exec-backend exec-frontend exec-db exec-nginx \
+        ps status logs logs-backend logs-frontend logs-db logs-nginx \
+        logs-prometheus logs-grafana logs-node-exporter logs-postgres-exporter top \
+        exec-backend exec-frontend exec-db exec-nginx exec-prometheus exec-grafana \
         images containers volumes networks prune \
         init-dirs clean-data clean fclean check-env help
 
@@ -24,8 +30,9 @@ check-env:
 
 init-dirs: check-env
 	@echo "[Makefile] Ensuring physical volume directories exist on host VM..."
-	@mkdir -p $(DB_DATA_DIR) $(UPLOADS_DATA_DIR) $(CERTS_DATA_DIR)
+	@mkdir -p $(DB_DATA_DIR) $(UPLOADS_DATA_DIR) $(CERTS_DATA_DIR) $(PROMETHEUS_DATA_DIR) $(GRAFANA_DATA_DIR)
 	@chmod 775 $(DB_DATA_DIR) $(UPLOADS_DATA_DIR) $(CERTS_DATA_DIR) 2>/dev/null || true
+	@chmod 777 $(PROMETHEUS_DATA_DIR) $(GRAFANA_DATA_DIR) 2>/dev/null || true
 
 
 build: check-env
@@ -43,11 +50,20 @@ up: init-dirs
 	@echo "=========================================================="
 	@echo " Trenno is running securely over HTTPS!"
 	@echo " Web Application : https://localhost:$(HTTPS_PORT)"
+	@echo " Grafana Portal  : https://localhost:$(HTTPS_PORT)/grafana/"
+	@echo " Prometheus UI   : https://localhost:$(HTTPS_PORT)/prometheus/"
 	@echo "=========================================================="
 
 up-build: init-dirs
 	@echo "[Makefile] Building and starting all services in background..."
 	$(COMPOSE) up --build -d
+	@echo ""
+	@echo "=========================================================="
+	@echo " Trenno is running securely over HTTPS!"
+	@echo " Web Application : https://localhost:$(HTTPS_PORT)"
+	@echo " Grafana Portal  : https://localhost:$(HTTPS_PORT)/grafana/"
+	@echo " Prometheus UI   : https://localhost:$(HTTPS_PORT)/prometheus/"
+	@echo "=========================================================="
 
 down: check-env
 	@echo "[Makefile] Stopping and removing all containers and networks..."
@@ -98,6 +114,18 @@ logs-db: check-env
 logs-nginx: check-env
 	$(COMPOSE) logs -f nginx
 
+logs-prometheus: check-env
+	$(COMPOSE) logs -f prometheus
+
+logs-grafana: check-env
+	$(COMPOSE) logs -f grafana
+
+logs-node-exporter: check-env
+	$(COMPOSE) logs -f node-exporter
+
+logs-postgres-exporter: check-env
+	$(COMPOSE) logs -f postgres-exporter
+
 exec-backend: check-env
 	$(COMPOSE) exec backend sh
 
@@ -109,6 +137,12 @@ exec-db: check-env
 
 exec-nginx: check-env
 	$(COMPOSE) exec nginx sh
+
+exec-prometheus: check-env
+	$(COMPOSE) exec prometheus sh
+
+exec-grafana: check-env
+	$(COMPOSE) exec grafana sh
 
 images:
 	@echo "[Makefile] Docker images:"
@@ -136,7 +170,7 @@ clean: check-env
 
 clean-data:
 	@echo "[Makefile] Cleaning physical volume data on host VM..."
-	@rm -rf $(DB_DATA_DIR)/* $(UPLOADS_DATA_DIR)/* $(CERTS_DATA_DIR)/* 2>/dev/null || true
+	@rm -rf $(DB_DATA_DIR)/* $(UPLOADS_DATA_DIR)/* $(CERTS_DATA_DIR)/* $(PROMETHEUS_DATA_DIR)/* $(GRAFANA_DATA_DIR)/* 2>/dev/null || true
 
 fclean: clean
 	@echo "[Makefile] Full teardown: removing images, volumes, and physical data..."
@@ -164,10 +198,10 @@ help:
 	@echo "  make ps / status  - List container statuses and health"
 	@echo "  make top          - Display running processes in containers"
 	@echo "  make logs         - Stream real-time logs for all services"
-	@echo "  make logs-<svc>   - Stream logs for specific service (backend|frontend|db|nginx)"
+	@echo "  make logs-<svc>   - Stream logs for specific service (backend|frontend|db|nginx|prometheus|grafana|node-exporter|postgres-exporter)"
 	@echo ""
 	@echo "Interactive Shell:"
-	@echo "  make exec-<svc>   - Open shell inside service (backend|frontend|db|nginx)"
+	@echo "  make exec-<svc>   - Open shell inside service (backend|frontend|db|nginx|prometheus|grafana)"
 	@echo ""
 	@echo "System & Inspection:"
 	@echo "  make images       - List Docker images"

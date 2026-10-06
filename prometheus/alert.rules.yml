@@ -1,0 +1,79 @@
+groups:
+  - name: trenno_alerts
+    rules:
+      # Service Availability Alert
+      - alert: BackendServiceDown
+        expr: up{job="trenno-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "Trenno Backend API instance is unreachable"
+          description: "Backend container has been down for more than 1 minute. API and WebSockets are offline."
+
+      # Database Health Alert
+      - alert: DatabaseServiceDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "PostgreSQL Database exporter is unreachable"
+          description: "Database monitoring or PostgreSQL instance is down for more than 1 minute."
+
+      # High HTTP 5xx Error Rate
+      - alert: HighHttp5xxErrorRate
+        expr: (sum(rate(http_requests_total{status_code=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))) * 100 > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "Elevated HTTP 5xx error rate detected"
+          description: "Over 5% of API requests resulted in 5xx server errors over the last 5 minutes."
+
+      # High API Latency (p95 > 1s)
+      - alert: HighApiLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 3m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "API response latency 95th percentile exceeded 1 second"
+          description: "95% of requests are taking longer than 1,000ms to resolve over 3 minutes."
+
+      # Host/Container High CPU Usage (> 85%)
+      - alert: HighHostCpuUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "Host CPU utilization is above 85%"
+          description: "CPU load has remained above 85% for more than 5 minutes."
+
+      # Host/Container High Memory Usage (> 85%)
+      - alert: HighHostMemoryUsage
+        expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "Host memory utilization is above 85%"
+          description: "System memory consumption exceeded 85% for 5 minutes."
+
+      # High Database Connection Pool Usage
+      - alert: HighDatabaseConnections
+        expr: pg_stat_activity_count > 80
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "PostgreSQL active connection count is high (> 80)"
+          description: "PostgreSQL database has more than 80 concurrent active sessions."
