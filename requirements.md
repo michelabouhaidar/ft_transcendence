@@ -1,4 +1,4 @@
-# Trenno — Requirements Specification
+# Trenno - Requirements Specification
 
 ## 1. Conventions
 
@@ -59,7 +59,7 @@ Rules:
 | Edit / delete the org | ✓ | org | ✗ | ✗ | ✗ |
 | Invite (Member/Viewer), resend, revoke invitations | ✓ (any role) | org | ✗ | ✗ | ✗ |
 | Change role Member ↔ Viewer, remove Member/Viewer | ✓ | org | ✗ | ✗ | ✗ |
-| Leave the org | — | ✓ (not last OA) | ✓ | ✓ | — |
+| Leave the org | - | ✓ (not last OA) | ✓ | ✓ | - |
 | Create / edit / delete project, grant/revoke access | ✓ | org | ✗ | ✗ | ✗ |
 | View project, board, tasks, comments; search | ✓ | org | proj | proj | ✗ |
 | Create / edit / move / assign task | ✓ | org | proj | ✗ | ✗ |
@@ -89,7 +89,7 @@ Rules:
 
 ## 6. Functional requirements
 
-### 6.1 Accounts (AUTH) — *mandatory + Standard user management*
+### 6.1 Accounts (AUTH) - *mandatory + Standard user management*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -101,7 +101,7 @@ Rules:
 | **AUTH-06** | Change password. | Current password required. Other sessions revoked. Confirmation email. |
 | **AUTH-07** | Sessions. | Server-side sessions in PostgreSQL; cookie `HttpOnly; Secure; SameSite=Lax`; idle timeout 12 h, absolute 7 days. Expired → redirect to login and back to the same page after login (any 401 from the API while signed in ends the client session and triggers the same redirect, so it also works when the session expires while a page is open). Suspension/deletion revokes all sessions and closes sockets immediately. |
 
-### 6.2 Two-factor authentication (2FA) — *Minor: complete 2FA*
+### 6.2 Two-factor authentication (2FA) - *Minor: complete 2FA*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -110,7 +110,7 @@ Rules:
 | **2FA-03** | Login second step. | After the password, a 5-minute pending step accepts a TOTP (±1 step) or a recovery code. 5 wrong codes → start again. |
 | **2FA-04** | Disable. | Password + valid code. Confirmation email. |
 
-### 6.3 Invitations (INV) — *Organization system*
+### 6.3 Invitations (INV) - *Organization system*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -119,7 +119,7 @@ Rules:
 | **INV-03** | Accept as an existing account. | Must be logged in as the invited email. Accept / Decline. If already in another org → "Leave <org> first". Pending invitations also appear on the Unaffiliated onboarding page. |
 | **INV-04** | Manage invitations. | OA/SA list: email, role, inviter, expiry, status. **Resend** (new token, old link dead) and **Revoke**. Expired, revoked or used links → clear error page (API `410`). |
 
-### 6.4 Profiles, friends, presence (USR) — *Standard user management*
+### 6.4 Profiles, friends, presence (USR) - *Standard user management*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -130,7 +130,7 @@ Rules:
 | **USR-05** | Friends. | Same-org users can send a request; the other accepts or declines; either can remove. Refused: self, duplicates, other org. Friendships end when a user leaves the org, is deleted, or becomes a System Admin. Pending requests end the same way. After a decline or cancel a new request can be sent. System Admins and unaffiliated users have no friends feature. Two simultaneous requests create one. `/friends` has Friends, Incoming and Outgoing tabs. Live: every request, accept, decline, cancel and removal (and friendships ended by leaving, deletion or System Admin promotion) sends `friendship:updated` to both people's `user:<id>` rooms; the Friends, Members and profile pages refresh at once. |
 | **USR-06** | Online status. | Friends list shows **Online** or **Offline** ("last seen …"). Online = at least one open socket; offline only after a 10 s grace period with none, so a reload or a short network drop doesn't flicker. Going offline stores `last_seen_at`. Shown on the friends list and on a friend's profile, never to non-friends; changes are pushed live (`presence:update` to each friend's user room). |
 
-### 6.5 Administration (ADM) — *Advanced permissions*
+### 6.5 Administration (ADM) - *Advanced permissions*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -142,7 +142,7 @@ Rules:
 | **ADM-06** | Delete users. | Typed email confirmation. Soft delete with anonymization (§7.1). Refused for the last OA of an org or the last SA. Email sent before anonymization. |
 | **ADM-07** | Role-based UI. | Every role sees exactly §4.3. Typing a forbidden URL shows 403/404; API returns 403/404. |
 
-### 6.6 Organizations (ORG) — *Organization system*
+### 6.6 Organizations (ORG) - *Organization system*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -154,7 +154,7 @@ Rules:
 | **ORG-06** | Change role Member ↔ Viewer. | OA or SA. Becoming Viewer unassigns their tasks (warning shows how many). Affected user's UI changes live. `PATCH /orgs/:id/members/:userId` with `role`; `GET …/impact` returns the task count shown in the warning. Org Admin roles and your own role can't be changed here. The user gets an email. |
 | **ORG-07** | Remove a member / leave. | OA removes Members/Viewers (SA can remove anyone); anyone can leave except the last OA. Membership ended (`left_at`), project access revoked, tasks unassigned, friendships ended, email sent to a removed user. Their tasks/comments remain. `DELETE /orgs/:id/members/:userId` (an OA cannot remove an OA; never the last OA) and `POST /orgs/:id/leave`. Leaving sends no email. Buttons are on the Members page. |
 
-### 6.7 Projects (PRJ) — *Organization system*
+### 6.7 Projects (PRJ) - *Organization system*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -164,7 +164,7 @@ Rules:
 | **PRJ-04** | Project access. | OA grants/revokes access to Members/Viewers of the org. Revoking unassigns that user's tasks in the project and removes them from the project's live room. `GET/POST /projects/:key/access`, `DELETE /projects/:key/access/:userId`; Org Admins are listed as always having access; the revoke dialog shows how many tasks get unassigned. A revoked user's sockets leave `project:<id>` at once and get `me:updated`, so their open board refetches and shows the 404; any later request is refused too. |
 | **PRJ-05** | Delete a project. | OA/SA; typed key. Soft-deletes the project, tasks, comments, access rows. Open boards show "This project was deleted". Name/key reusable. `DELETE /projects/:key` with `confirmKey`; afterwards the key answers 404 `PROJECT_DELETED` to anyone who could see it. Open boards get `project:deleted` and show it at once; the project room is closed. |
 
-### 6.8 Tasks, board, comments (TSK) — *Organization system*
+### 6.8 Tasks, board, comments (TSK) - *Organization system*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -180,7 +180,7 @@ Rules:
 | **TSK-10** | Delete a task. | OA/SA, or the Member who created it. Confirmation. Soft delete with its comments. `DELETE /projects/:key/tasks/:n`. |
 | **TSK-11** | Comments. | OA, Members **and Viewers** with access: add (1–5,000 chars), edit own ("edited"), delete own (OA/SA: any). Deleted comments show "This comment was deleted". Live for other viewers. `GET/POST /projects/:key/tasks/:n/comments`, `PATCH/DELETE /comments/:id`. |
 
-### 6.9 Notifications (NOTIF) — *Minor: complete notification system*
+### 6.9 Notifications (NOTIF) - *Minor: complete notification system*
 
 **Rule:** Every create, update, or delete action listed below creates a persistent notification for each user in the audience, **except the actor**, and only if the user can still access the resource. Text is stored as `type + params` and rendered by the frontend, so wording can change without touching stored rows.
 
@@ -228,7 +228,7 @@ Rules:
 | **NOTIF-03** | Notification page. | Dedicated `/notifications` view (System Admin: `/admin/notifications`; available also to unaffiliated users for invitation notices): All / Unread filter tabs, pagination (20 items/page). Features: Mark read, mark all read, delete (soft delete). |
 | **NOTIF-04** | Missing resource handling. | Clicking a notification whose underlying resource was deleted or made inaccessible displays a clear message: "This item was deleted or you no longer have access to it." Managed by backend response `PATCH /notifications/:id/read` returning `{ gone: true }`. |
 
-### 6.10 Search (SRCH) — *Minor: advanced search*
+### 6.10 Search (SRCH) - *Minor: advanced search*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -237,7 +237,7 @@ Rules:
 | **SRCH-03** | Sorting options. | Sort by updated date (default), created date, due date (empty dates placed last), priority, or title; direction `asc` or `desc`. Defaults: newest updated first, soonest due first, highest priority first, alphabetical title A→Z. |
 | **SRCH-04** | Pagination & URL sync. | 25 results per page with range indicator (e.g., "26–50 of 132"). Search query, applied filters, sort field, direction, and page number synchronize with URL query parameters for shareable URLs and functional browser history. |
 
-### 6.11 Custom design system (DS) — *Minor: custom design system / UI kit*
+### 6.11 Custom design system (DS) - *Minor: custom design system / UI kit*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -246,7 +246,7 @@ Rules:
 | **DS-03** | Reusable UI components. | Modular library of ≥ 10 reusable UI components (Button, IconButton, Input, Textarea, Select, Checkbox, Card, Badge, Alert, Toast, Modal, ConfirmDialog, Menu, Tabs, Spinner, Avatar, Logo, ThemeToggle, PasswordChecklist, EmptyState) with defined variants, props, and keyboard/focus accessibility states. |
 | **DS-04** | Live component showcase. | Dedicated showcase view at `/design-system` demonstrating all design tokens, component variants, interactive states (hover, focus, disabled, active), and real-time theme toggling. |
 
-### 6.12 Real-time (RT) — *Major: real-time features using WebSockets*
+### 6.12 Real-time (RT) - *Major: real-time features using WebSockets*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
@@ -255,7 +255,7 @@ Rules:
 | **RT-03** | Scoped room broadcasting. | Partitioned rooms: `user:<id>`, `org:<id>`, and `project:<id>`. Events emit strictly to the targeted room. Clients subscribe to/unsubscribe from `project:<id>` when opening or closing a board; backend verifies project access on subscription. |
 | **RT-04** | Graceful reconnects & versioning. | Network disconnection triggers a visible "Reconnecting…" banner (GEN-04). Automatic reconnection with exponential backoff rejoins active rooms and refetches stale state. Presence reflects offline status after a 10 s grace period. State events carry optimistic `version` counters to prevent out-of-order race conditions (§7.2). |
 
-### 6.13 General and legal (GEN) — *mandatory*
+### 6.13 General and legal (GEN) - *mandatory*
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
