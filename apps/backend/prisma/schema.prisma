@@ -1,0 +1,352 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// Enums matching b_Trenno spec (§10)
+// ==========================================
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum OrgRole {
+  OA
+  MEMBER
+  VIEWER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum InvitationRole {
+  OA
+  MEMBER
+  VIEWER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+}
+
+enum AuthTokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REMOVED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ==========================================
+// Models (15 Core Tables)
+// ==========================================
+
+model User {
+  id                 String           @id @default(uuid()) @db.Uuid
+  email              String           @unique
+  passwordHash       String?          @map("password_hash")
+  firstName          String           @map("first_name") @db.VarChar(50)
+  lastName           String           @map("last_name") @db.VarChar(50)
+  jobTitle           String?          @map("job_title") @db.VarChar(100)
+  bio                String?          @db.VarChar(500)
+  avatarPath         String?          @map("avatar_path")
+  isSystemAdmin      Boolean          @default(false) @map("is_system_admin")
+  status             AccountStatus    @default(PENDING_VERIFICATION)
+  failedLoginCount   Int              @default(0) @map("failed_login_count")
+  lockedUntil        DateTime?        @map("locked_until") @db.Timestamptz()
+  lastLoginAt        DateTime?        @map("last_login_at") @db.Timestamptz()
+  lastSeenAt         DateTime?        @map("last_seen_at") @db.Timestamptz()
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt          DateTime?        @map("deleted_at") @db.Timestamptz()
+
+  // Relations
+  memberships        Membership[]
+  createdOrgs        Organization[]   @relation("OrgCreator")
+  deletedOrgs        Organization[]   @relation("OrgDeletedBy")
+  sentInvitations    Invitation[]     @relation("InvitedBy")
+  authTokens         AuthToken[]
+  sessions           Session[]
+  twoFactor          TwoFactor?
+  recoveryCodes      RecoveryCode[]
+  createdTasks       Task[]           @relation("TaskCreator")
+  assignedTasks      Task[]           @relation("TaskAssignee")
+  deletedTasks       Task[]           @relation("TaskDeletedBy")
+  comments           Comment[]        @relation("CommentAuthor")
+  deletedComments    Comment[]        @relation("CommentDeletedBy")
+  recipientNotifications Notification[] @relation("NotificationRecipient")
+  actorNotifications Notification[]     @relation("NotificationActor")
+  projectAccesses    ProjectAccess[]  @relation("UserAccess")
+  grantedAccesses    ProjectAccess[]  @relation("GrantedBy")
+  deletedProjects    Project[]        @relation("ProjectDeletedBy")
+  sentFriendReqs     Friendship[]     @relation("Requester")
+  recvFriendReqs     Friendship[]     @relation("Addressee")
+  sentSaInvitations  SaInvitation[]   @relation("SaInvitedBy")
+
+  @@map("user")
+}
+
+model Organization {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(100)
+  description String?       @db.VarChar(1000)
+  createdById String        @map("created_by_id") @db.Uuid
+  createdBy   User          @relation("OrgCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt   DateTime?     @map("deleted_at") @db.Timestamptz()
+  deletedById String?       @map("deleted_by_id") @db.Uuid
+  deletedBy   User?         @relation("OrgDeletedBy", fields: [deletedById], references: [id], onDelete: Restrict)
+
+  memberships Membership[]
+  projects    Project[]
+  invitations Invitation[]
+
+  @@map("organization")
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  orgId          String           @map("org_id") @db.Uuid
+  organization   Organization     @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  userId         String           @map("user_id") @db.Uuid
+  user           User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role           OrgRole          @default(MEMBER)
+  status         MembershipStatus @default(ACTIVE)
+  joinedAt       DateTime         @default(now()) @map("joined_at") @db.Timestamptz()
+  leftAt         DateTime?        @map("left_at") @db.Timestamptz()
+
+  @@map("membership")
+}
+
+model Invitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  orgId          String           @map("org_id") @db.Uuid
+  organization   Organization     @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  email          String
+  role           InvitationRole
+  tokenHash      String           @unique @map("token_hash") @db.Char(64)
+  status         InvitationStatus @default(PENDING)
+  invitedById    String           @map("invited_by_id") @db.Uuid
+  invitedBy      User             @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Restrict)
+  expiresAt      DateTime         @map("expires_at") @db.Timestamptz()
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("invitation")
+}
+
+// ADM-02: an invitation to become System Admin. Not tied to an organization
+// (an SA belongs to none, §4.1), so it lives apart from `invitation`.
+model SaInvitation {
+  id          String           @id @default(uuid()) @db.Uuid
+  email       String
+  tokenHash   String           @unique @map("token_hash") @db.Char(64)
+  status      InvitationStatus @default(PENDING)
+  invitedById String           @map("invited_by_id") @db.Uuid
+  invitedBy   User             @relation("SaInvitedBy", fields: [invitedById], references: [id], onDelete: Restrict)
+  expiresAt   DateTime         @map("expires_at") @db.Timestamptz()
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("sa_invitation")
+}
+
+model AuthToken {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  user      User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  type      AuthTokenType
+  tokenHash String        @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime      @map("expires_at") @db.Timestamptz()
+  usedAt    DateTime?     @map("used_at") @db.Timestamptz()
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("auth_token")
+}
+
+model Session {
+  idHash         String    @id @map("id_hash") @db.Char(64)
+  userId         String    @map("user_id") @db.Uuid
+  user           User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  pending2fa     Boolean   @default(false) @map("pending_2fa")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz()
+  lastActivityAt DateTime  @default(now()) @map("last_activity_at") @db.Timestamptz()
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz()
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([expiresAt], map: "idx_session_expires_at")
+  @@map("session")
+}
+
+model TwoFactor {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @unique @map("user_id") @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  secretEncrypted Bytes     @map("secret_encrypted")
+  enabledAt       DateTime? @map("enabled_at") @db.Timestamptz()
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("two_factor")
+}
+
+model RecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at") @db.Timestamptz()
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("recovery_code")
+}
+
+model Friendship {
+  id          String           @id @default(uuid()) @db.Uuid
+  requesterId String           @map("requester_id") @db.Uuid
+  requester   User             @relation("Requester", fields: [requesterId], references: [id], onDelete: Restrict)
+  addresseeId String           @map("addressee_id") @db.Uuid
+  addressee   User             @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Restrict)
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("friendship")
+}
+
+model Project {
+  id          String        @id @default(uuid()) @db.Uuid
+  orgId       String        @map("org_id") @db.Uuid
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  key         String        @db.VarChar(6)
+  name        String        @db.VarChar(100)
+  description String?       @db.VarChar(2000)
+  startDate   DateTime?     @map("start_date") @db.Date
+  targetDate  DateTime?     @map("target_date") @db.Date
+  taskCounter Int           @default(0) @map("task_counter")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt   DateTime?     @map("deleted_at") @db.Timestamptz()
+  deletedById String?       @map("deleted_by_id") @db.Uuid
+  deletedBy   User?         @relation("ProjectDeletedBy", fields: [deletedById], references: [id], onDelete: Restrict)
+
+  tasks       Task[]
+  accessList  ProjectAccess[]
+
+  @@map("project")
+}
+
+model ProjectAccess {
+  id          String    @id @default(uuid()) @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  userId      String    @map("user_id") @db.Uuid
+  user        User      @relation("UserAccess", fields: [userId], references: [id], onDelete: Restrict)
+  grantedById String    @map("granted_by_id") @db.Uuid
+  grantedBy   User      @relation("GrantedBy", fields: [grantedById], references: [id], onDelete: Restrict)
+  grantedAt   DateTime  @default(now()) @map("granted_at") @db.Timestamptz()
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz()
+
+  @@map("project_access")
+}
+
+model Task {
+  id          String        @id @default(uuid()) @db.Uuid
+  projectId   String        @map("project_id") @db.Uuid
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  number      Int
+  title       String        @db.VarChar(200)
+  description String?
+  status      TaskStatus    @default(TODO)
+  priority    TaskPriority  @default(MEDIUM)
+  position    Float         @default(65536)
+  dueDate     DateTime?     @map("due_date") @db.Date
+  creatorId   String        @map("creator_id") @db.Uuid
+  creator     User          @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  assigneeId  String?       @map("assignee_id") @db.Uuid
+  assignee    User?         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  version     Int           @default(1)
+  completedAt DateTime?     @map("completed_at") @db.Timestamptz()
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt   DateTime?     @map("deleted_at") @db.Timestamptz()
+  deletedById String?       @map("deleted_by_id") @db.Uuid
+  deletedBy   User?         @relation("TaskDeletedBy", fields: [deletedById], references: [id], onDelete: Restrict)
+
+  comments    Comment[]
+
+  @@unique([projectId, number])
+  // Declared here so `prisma db push` keeps them (db/init.sql creates the same ones on a fresh volume).
+  @@index([projectId, status, position], map: "idx_task_kanban_order")
+  @@index([assigneeId], map: "idx_task_assignee")
+  @@index([dueDate], map: "idx_task_due_date")
+  // SRCH-01: case-insensitive partial matching (ILIKE) on title and description.
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_task_title_trgm")
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_task_description_trgm")
+  @@map("task")
+}
+
+model Comment {
+  id          String    @id @default(uuid()) @db.Uuid
+  taskId      String    @map("task_id") @db.Uuid
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  authorId    String    @map("author_id") @db.Uuid
+  author      User      @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  body        String    @db.VarChar(5000)
+  editedAt    DateTime? @map("edited_at") @db.Timestamptz()
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz()
+  deletedById String?   @map("deleted_by_id") @db.Uuid
+  deletedBy   User?     @relation("CommentDeletedBy", fields: [deletedById], references: [id], onDelete: Restrict)
+
+  // Declared here so `prisma db push` keeps them (db/init.sql creates the same on a fresh volume).
+  @@index([taskId, createdAt], map: "idx_comment_task_created")
+  @@map("comment")
+}
+
+model Notification {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  user         User      @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Restrict)
+  // Null for events nobody in particular caused (lockout, own password or 2FA change): §6.9 "the user".
+  actorId      String?   @map("actor_id") @db.Uuid
+  actor        User?     @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Restrict)
+  type         String    @db.VarChar(50)
+  params       Json
+  resourceType String    @map("resource_type") @db.VarChar(30)
+  resourceId   String    @map("resource_id") @db.Uuid
+  readAt       DateTime? @map("read_at") @db.Timestamptz()
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz()
+
+  @@index([userId, readAt, createdAt(sort: Desc)], map: "idx_notification_user_inbox")
+  @@map("notification")
+}
