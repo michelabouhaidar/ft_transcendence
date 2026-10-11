@@ -80,13 +80,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       active: currentPath === "/search",
     },
     {
-      id: "analytics",
-      label: "Analytics",
-      path: "/analytics",
-      icon: <BarChart3 className="w-4 h-4 shrink-0" />,
-      active: currentPath === "/analytics",
-    },
-    {
       id: "notifications",
       label: "Notifications",
       path: "/notifications",

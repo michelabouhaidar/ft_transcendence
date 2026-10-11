@@ -1,7 +1,18 @@
-import { ButtonHTMLAttributes, ReactNode, forwardRef } from "react";
+// Reusable button: props describe its options, style tables define its appearance, and the component renders it.
+// forwardRef lets a parent focus the real HTML button.
+
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef } from "react";
 import { Spinner } from "./Spinner";
 
-export type ButtonVariant = "primary" | "secondary" | "destructive" | "ghost" | "outline" | "link" | "quiet";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "destructive"
+  | "ghost"
+  | "outline"
+  | "link"
+  | "quiet";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -27,13 +38,10 @@ const variantStyles: Record<ButtonVariant, string> = {
   outline:
     "bg-transparent text-zinc-900 border border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 active:bg-zinc-100 dark:text-zinc-100 dark:border-zinc-700/80 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50 dark:active:bg-zinc-800 focus-visible:ring-brand-500",
   // Text-only actions inside sentences, alerts and form footers.
-  link:
-    "bg-transparent text-brand-600 hover:text-brand-500 hover:underline underline-offset-2 dark:text-brand-400 focus-visible:ring-brand-500",
+  link: "bg-transparent text-brand-600 hover:text-brand-500 hover:underline underline-offset-2 dark:text-brand-400 focus-visible:ring-brand-500",
   quiet:
     "bg-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 focus-visible:ring-zinc-400",
 };
-
-const TEXT_VARIANTS: ButtonVariant[] = ["link", "quiet"];
 
 const invertedVariantStyles: Partial<Record<ButtonVariant, string>> = {
   primary:
@@ -84,13 +92,22 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       type = "button",
       ...props
     },
-    ref
+    ref,
   ) => {
+    // Work out each choice before building the button markup.
     const isDisabled = disabled || isLoading;
-    const computedVariantStyle =
-      inverted && invertedVariantStyles[variant]
-        ? invertedVariantStyles[variant]
-        : variantStyles[variant];
+    const isTextButton = variant === "link" || variant === "quiet";
+    const buttonSizeClasses = isTextButton
+      ? textSizeStyles[size]
+      : sizeStyles[size];
+    const spinnerSize = size === "lg" ? "md" : "sm";
+    const useWhiteSpinner =
+      inverted || variant === "primary" || variant === "destructive";
+    let buttonColorClasses = variantStyles[variant];
+    const invertedClasses = invertedVariantStyles[variant];
+    if (inverted && invertedClasses) {
+      buttonColorClasses = invertedClasses;
+    }
 
     return (
       <button
@@ -103,19 +120,21 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer
           ${uppercase ? "uppercase tracking-wider font-semibold" : "tracking-normal"}
           ${fullWidth ? "w-full" : ""}
-          ${computedVariantStyle}
-          ${TEXT_VARIANTS.includes(variant) ? textSizeStyles[size] : sizeStyles[size]}
+          ${buttonColorClasses}
+          ${buttonSizeClasses}
           ${className}`}
         {...props}
       >
         {isLoading ? (
           <Spinner
-            size={size === "lg" ? "md" : "sm"}
-            variant={inverted || variant === "primary" || variant === "destructive" ? "white" : "current"}
+            size={spinnerSize}
+            variant={useWhiteSpinner ? "white" : "current"}
             className="shrink-0"
           />
         ) : (
-          leftIcon && <span className={`shrink-0 ${iconSizes[size]}`}>{leftIcon}</span>
+          leftIcon && (
+            <span className={`shrink-0 ${iconSizes[size]}`}>{leftIcon}</span>
+          )
         )}
 
         <span>{children}</span>
@@ -125,7 +144,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";
