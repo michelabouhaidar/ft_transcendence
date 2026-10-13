@@ -30,6 +30,7 @@ ENV PORT=3000
 COPY --from=builder /app/apps/backend/node_modules ./apps/backend/node_modules
 COPY --from=builder /app/apps/backend/package*.json ./apps/backend/
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+COPY --from=builder /app/apps/backend/prisma ./apps/backend/prisma
 COPY --from=builder /app/apps/backend/docker-entrypoint.sh ./apps/backend/docker-entrypoint.sh
 
 # Create uploads directory for physical volume mount

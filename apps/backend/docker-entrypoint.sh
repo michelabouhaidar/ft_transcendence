@@ -23,6 +23,10 @@ echo "[Backend Entrypoint] Database connection verified."
 if [ -d "./prisma" ]; then
   echo "[Backend Entrypoint] Synchronizing database schema with Prisma..."
   npx prisma db push --skip-generate --accept-data-loss || true
+
+  # Seed initial system administrator
+  echo "[Backend Entrypoint] Running initial seed..."
+  npx tsx prisma/seed.ts || echo "[Backend Entrypoint] Seed warning (skipped or already run)."
 fi
 
 echo "[Backend Entrypoint] Starting application: $@"
