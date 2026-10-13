@@ -1,6 +1,6 @@
 import { http, query } from "./http";
 
-// Notifications (spec §6.9). Rows carry a type and params; notificationText.ts words them.
+// Rows carry a type and params; notificationText.ts words them.
 
 export interface AppNotification {
   id: string;
@@ -21,7 +21,7 @@ export interface NotificationPage {
   pageSize: number;
 }
 
-// Where a notification leads now; `gone` = deleted or no longer accessible (NOTIF-04).
+// Where a notification leads now; `gone` = deleted or no longer accessible.
 export interface NotificationTarget {
   path: string | null;
   gone: boolean;
