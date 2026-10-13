@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  letter-spacing: -0.01em;
+}
+
+/* Smooth color transition for the dark / light mode toggle */
+body, header, aside, main, footer, nav, section, article, div, button, input, textarea, select, span, a, p, h1, h2, h3, h4, h5, h6 {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
