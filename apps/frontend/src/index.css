@@ -4,25 +4,6 @@
 
 :root {
   color-scheme: light;
-
-  --color-brand: #2563eb;
-  --color-brand-hover: #1d4ed8;
-
-  --color-destructive: #e11d48;
-  --color-destructive-hover: #be123c;
-  --color-warning: #f59e0b;
-  --color-warning-hover: #d97706;
-  --color-success: #10b981;
-  --color-success-hover: #059669;
-  --color-info: #0ea5e9;
-  --color-info-hover: #0284c7;
-  --color-platform: #9333ea;
-  --color-platform-hover: #7e22ce;
-
-  --color-dark-bg: #090a0f;
-  --color-dark-card: #0f1118;
-  --color-dark-elevated: #151823;
-  --color-dark-border: #232736;
 }
 
 .dark {
@@ -32,11 +13,12 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   letter-spacing: -0.01em;
 }
 
-h1, h2, h3, h4, .font-display {
-  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  letter-spacing: -0.01em;
+/* Smooth color transition for the dark / light mode toggle */
+body, header, aside, main, footer, nav, section, article, div, button, input, textarea, select, span, a, p, h1, h2, h3, h4, h5, h6 {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
