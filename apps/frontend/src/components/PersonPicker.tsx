@@ -2,6 +2,7 @@ import { KeyboardEvent, ReactNode, useEffect, useId, useMemo, useRef, useState }
 import { createPortal } from "react-dom";
 import { Check, Search, UserX } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { useClickOutside } from "../lib/hooks";
 
 export interface PersonPickerPerson {
   id: string;
@@ -88,23 +89,18 @@ export function PersonPicker({
       // Opens upwards when there isn't room below.
       setPos(r.bottom + 360 > window.innerHeight && r.top > 360 ? { left, bottom: window.innerHeight - r.top + 6 } : { left, top: r.bottom + 6 });
     }
-    const inside = (t: EventTarget | null) =>
-      t instanceof Node && Boolean(rootRef.current?.contains(t) || panelRef.current?.contains(t));
-    const close = (e: MouseEvent) => {
-      if (!inside(e.target)) setOpen(false);
-    };
+    // Scrolling or resizing anything but the list closes it (it's positioned once).
     const dismiss = (e: Event) => {
-      if (!inside(e.target)) setOpen(false);
+      if (!(e.target instanceof Node && panelRef.current?.contains(e.target))) setOpen(false);
     };
-    document.addEventListener("mousedown", close);
     window.addEventListener("scroll", dismiss, true);
     window.addEventListener("resize", dismiss);
     return () => {
-      document.removeEventListener("mousedown", close);
       window.removeEventListener("scroll", dismiss, true);
       window.removeEventListener("resize", dismiss);
     };
   }, [open, align]);
+  useClickOutside([rootRef, panelRef], () => setOpen(false), open);
 
   useEffect(() => setActive(0), [query]);
 

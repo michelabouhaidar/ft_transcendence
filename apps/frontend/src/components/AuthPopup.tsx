@@ -1,1344 +1,667 @@
-import React, { useState, useEffect } from "react";
-import { authApi } from "../api/auth";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { AlertCircle, ArrowLeft, ArrowRight, Clock, Lock, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
+import { authApi, LoginResponse } from "../api/auth";
+import type { ApiError } from "../api/http";
 import { useAuth } from "../context/AuthContext";
-import { Modal } from "./Modal";
-import { Input } from "./Input";
-import { Button } from "./Button";
 import { Alert } from "./Alert";
-import { Spinner } from "./Spinner";
-import { Checkbox } from "./Checkbox";
+import { Button } from "./Button";
+import { Input } from "./Input";
+import { Modal } from "./Modal";
 import { PasswordChecklist, PasswordMatchIndicator } from "./PasswordChecklist";
-import { PrivacyModal, TermsModal } from "./LegalModals";
-import {
-  ShieldCheck,
-  ShieldAlert,
-  Lock,
-  Clock,
-  AlertCircle,
-  Mail,
-  ArrowLeft,
-  ArrowRight,
-} from "lucide-react";
+import { TermsCheckbox, useLegalModals } from "./LegalModals";
+import { Spinner } from "./Spinner";
 
-export type AuthPopupView =
-  | "login"
-  | "signup"
-  | "verify"
-  | "forgot-password"
-  | "reset-password";
+export type AuthPopupView = "login" | "signup" | "verify" | "forgot-password" | "reset-password";
 
-interface AuthPopupProps {
-  view: AuthPopupView | null;
-  onClose: () => void;
-  onSwitchView: (view: AuthPopupView) => void;
-  onNavigateToOnboarding: (userData?: { role?: string; isSystemAdmin?: boolean; hasOrg?: boolean }) => void;
+export interface SignedIn {
+  role: string;
+  isSystemAdmin: boolean;
+  hasOrg: boolean;
 }
 
-export const AuthPopup: React.FC<AuthPopupProps> = ({
-  view,
-  onClose,
-  onSwitchView,
-  onNavigateToOnboarding,
-}) => {
+interface ViewProps {
+  onClose: () => void;
+  onSwitchView: (view: AuthPopupView) => void;
+}
+
+// One dialog for /login, /signup, /verify, /forgot-password and /reset-password. Each view mounts
+// fresh when the route changes, so no state leaks between them.
+export function AuthPopup({ view, onSignedIn, ...props }: ViewProps & { view: AuthPopupView | null; onSignedIn: (info: SignedIn) => void }) {
+  switch (view) {
+    case "login":
+      return <LoginView {...props} onSignedIn={onSignedIn} />;
+    case "signup":
+      return <SignupView {...props} />;
+    case "verify":
+      return <VerifyView {...props} />;
+    case "forgot-password":
+      return <ForgotView {...props} />;
+    case "reset-password":
+      return <ResetView {...props} />;
+    default:
+      return null;
+  }
+}
+
+// ---------- Shared pieces ----------
+
+const token = () => new URLSearchParams(window.location.search).get("token");
+
+function AuthModal({ title, description, wide, onClose, children }: { title: string; description: string; wide?: boolean; onClose: () => void; children: ReactNode }) {
+  return (
+    <Modal isOpen onClose={onClose} title={title} description={description} maxWidth={wide ? "lg" : "md"}>
+      {children}
+    </Modal>
+  );
+}
+
+// Error code + message, a busy flag, and a submit handler that records API errors.
+function useAuthForm() {
+  const [error, setError] = useState<{ code: string | null; message: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fail = (code: string | null, message: string) => setError({ code, message });
+  const submit = (action: () => Promise<unknown>, fallback: string, fallbackCode: string | null = null) => async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await action();
+    } catch (err) {
+      const ex = err as ApiError;
+      fail(ex.code || fallbackCode, ex.message || fallback);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { error, setError, fail, busy, submit };
+}
+
+function Footer({ children, onBack, roomy }: { children?: ReactNode; onBack?: () => void; roomy?: boolean }) {
+  return (
+    <div className={`${roomy ? "mt-5 pt-4" : "mt-4 pt-3"} border-t border-zinc-100 dark:border-zinc-800 text-center text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between`}>
+      {children}
+      {onBack && (
+        <Button variant="quiet" size="sm" onClick={onBack}>
+          Back
+        </Button>
+      )}
+    </div>
+  );
+}
+
+const TONES = {
+  brand: "bg-brand-500/10 text-brand-600 dark:text-brand-400",
+  success: "bg-success-500/10 text-success-600 dark:text-success-400",
+  danger: "bg-destructive-500/10 text-destructive-600 dark:text-destructive-400",
+};
+
+// Centered outcome: icon, heading, text and actions.
+function Result({ tone, icon, title, children, actions }: { tone: keyof typeof TONES; icon: ReactNode; title: string; children: ReactNode; actions: ReactNode }) {
+  return (
+    <div className="text-center py-4 space-y-4">
+      <div className={`mx-auto w-12 h-12 flex items-center justify-center ${TONES[tone]}`}>{icon}</div>
+      <div className="space-y-1.5">
+        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 font-sans">{title}</h3>
+        <div className="text-xs text-zinc-500 dark:text-zinc-400 font-sans leading-relaxed max-w-sm mx-auto">{children}</div>
+      </div>
+      <div className="pt-2 space-y-3">{actions}</div>
+    </div>
+  );
+}
+
+function Waiting({ text }: { text: string }) {
+  return (
+    <div className="py-8 text-center space-y-3">
+      <Spinner size="lg" className="mx-auto" />
+      <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">{text}</p>
+    </div>
+  );
+}
+
+const ToSignIn = ({ onSwitchView, label = "Proceed to Sign In", arrow = true }: { onSwitchView: ViewProps["onSwitchView"]; label?: string; arrow?: boolean }) => (
+  <Button fullWidth onClick={() => onSwitchView("login")} rightIcon={arrow ? <ArrowRight className="w-4 h-4" /> : undefined}>
+    {label}
+  </Button>
+);
+
+const PasswordPair = ({ password, confirm, setPassword, setConfirm, labels }: { password: string; confirm: string; setPassword: (v: string) => void; setConfirm: (v: string) => void; labels: [string, string] }) => (
+  <>
+    <div>
+      <Input label={labels[0]} type="password" required placeholder="••••••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <PasswordChecklist password={password} />
+    </div>
+    <div>
+      <Input label={labels[1]} type="password" required placeholder="••••••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+      <PasswordMatchIndicator password={password} confirmPassword={confirm} />
+    </div>
+  </>
+);
+
+// ---------- Login and 2FA ----------
+
+function LoginView({ onClose, onSwitchView, onSignedIn }: ViewProps & { onSignedIn: (info: SignedIn) => void }) {
   const { setAuthData } = useAuth();
-
-  // -------------------------------------------------------------
-  // Common error & loading state
-  // -------------------------------------------------------------
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // -------------------------------------------------------------
-  // Login State
-  // -------------------------------------------------------------
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const { error, setError, fail, busy, submit } = useAuthForm();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [requires2fa, setRequires2fa] = useState(false);
-  const [totpCode, setTotpCode] = useState("");
+  const [code, setCode] = useState("");
   const [isRecoveryCode, setIsRecoveryCode] = useState(false);
-  const [resendStatus, setResendStatus] = useState<string | null>(null);
-  const [isResending, setIsResending] = useState(false);
+  const [resend, setResend] = useState<{ busy: boolean; status: string | null }>({ busy: false, status: null });
 
-  // -------------------------------------------------------------
-  // Sign-Up State
-  // -------------------------------------------------------------
-  const [signupFirstName, setSignupFirstName] = useState("");
-  const [signupLastName, setSignupLastName] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupPasswordConfirm, setSignupPasswordConfirm] = useState("");
-  const [acceptTerms, setAcceptTerms] = useState(false);
-  const [signupSuccess, setSignupSuccess] = useState(false);
+  const finish = (res: LoginResponse) => {
+    if (!res.user) return;
+    const role = res.role || (res.user.isSystemAdmin ? "SA" : "U");
+    setAuthData(res.user, res.organization || null, role);
+    onSignedIn({ role, isSystemAdmin: Boolean(res.user.isSystemAdmin || role === "SA"), hasOrg: Boolean(res.organization) });
+  };
 
-  // -------------------------------------------------------------
-  // Verify State
-  // -------------------------------------------------------------
-  const [verifyStatus, setVerifyStatus] = useState<"loading" | "success" | "error" | "prompt">("loading");
-  const [resendEmail, setResendEmail] = useState("");
-  const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const login = submit(async () => {
+    if (!email.trim()) return fail("VALIDATION_ERROR", "Please enter your email address to continue.");
+    if (!password) return fail("VALIDATION_ERROR", "Please enter your account password to continue.");
+    const res = await authApi.login({ email: email.trim(), password });
+    if (res.requires2fa) setRequires2fa(true);
+    else finish(res);
+  }, "Unable to sign in. Please verify your credentials.");
 
-  // -------------------------------------------------------------
-  // Forgot Password State
-  // -------------------------------------------------------------
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const verify2fa = submit(
+    async () => {
+      if (!code.trim()) return fail("VALIDATION_ERROR", isRecoveryCode ? "Please enter your emergency recovery code." : "Please enter the 6-digit authentication code.");
+      finish(await authApi.login2fa({ code: code.trim(), isRecoveryCode }));
+    },
+    "Invalid authentication code.",
+    "INVALID_2FA_CODE"
+  );
 
-  // -------------------------------------------------------------
-  // Reset Password State
-  // -------------------------------------------------------------
-  const [resetToken, setResetToken] = useState<string | null>(null);
-  const [resetPassword, setResetPassword] = useState("");
-  const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
-  const [resetSuccess, setResetSuccess] = useState(false);
-  const [resetTokenStatus, setResetTokenStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
-  const [resetTokenError, setResetTokenError] = useState<string | null>(null);
-
-  // -------------------------------------------------------------
-  // Legal Modals State
-  // -------------------------------------------------------------
-  const [privacyOpen, setPrivacyOpen] = useState(false);
-  const [termsOpen, setTermsOpen] = useState(false);
-
-  // Reset errors and stale form states when view changes
-  useEffect(() => {
-    setErrorMessage(null);
-    setErrorCode(null);
-    setResendStatus(null);
-    setResendMsg(null);
-    setIsResending(false);
-    setSignupSuccess(false);
-    setForgotSuccess(false);
-    setResetSuccess(false);
-    setResetTokenStatus("idle");
-    setResetTokenError(null);
-    setRequires2fa(false);
-    setTotpCode("");
-    setIsRecoveryCode(false);
-  }, [view]);
-
-  // Handle URL query parameters for verify and reset-password
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-
-    if (view === "verify") {
-      if (token) {
-        let isMounted = true;
-        setVerifyStatus("loading");
-        authApi
-          .verifyEmail(token)
-          .then(() => {
-            if (isMounted) setVerifyStatus("success");
-          })
-          .catch((err) => {
-            if (isMounted) {
-              setVerifyStatus("error");
-              setErrorCode(err.code || null);
-              setErrorMessage(err.message || "The verification link is invalid or has expired.");
-            }
-          });
-        return () => {
-          isMounted = false;
-        };
-      } else {
-        onSwitchView("login");
-      }
-    } else if (view === "reset-password") {
-      if (token) {
-        let isMounted = true;
-        setResetTokenStatus("validating");
-        setResetTokenError(null);
-        authApi
-          .verifyResetToken(token)
-          .then(() => {
-            if (isMounted) {
-              setResetToken(token);
-              setResetTokenStatus("valid");
-            }
-          })
-          .catch((err) => {
-            if (isMounted) {
-              setResetTokenStatus("invalid");
-              setResetTokenError(err.message || "Password reset link is invalid or has already been used.");
-            }
-          });
-        return () => {
-          isMounted = false;
-        };
-      } else {
-        setResetTokenStatus("invalid");
-        setResetTokenError("Missing password reset token in link. Please request a new password reset link.");
-      }
-    }
-  }, [view, onSwitchView]);
-
-  if (!view) return null;
-
-  // -------------------------------------------------------------
-  // Handlers
-  // -------------------------------------------------------------
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setErrorCode(null);
-
-    const trimmedEmail = loginEmail.trim();
-    if (!trimmedEmail) {
-      setErrorCode("VALIDATION_ERROR");
-      setErrorMessage("Please enter your email address to continue.");
-      return;
-    }
-
-    if (!loginPassword) {
-      setErrorCode("VALIDATION_ERROR");
-      setErrorMessage("Please enter your account password to continue.");
-      return;
-    }
-
-    setIsSubmitting(true);
+  const resendVerification = async () => {
+    if (!email.trim()) return setResend({ busy: false, status: "Please enter your email address above first." });
+    setResend({ busy: true, status: null });
     try {
-      const res = await authApi.login({
-        email: trimmedEmail,
-        password: loginPassword,
-      });
-
-      if (res.requires2fa) {
-        setRequires2fa(true);
-      } else if (res.user) {
-        const userRole = res.role || (res.user.isSystemAdmin ? "SA" : "U");
-        const isSA = Boolean(res.user.isSystemAdmin || userRole === "SA");
-        const hasOrg = Boolean(res.organization);
-
-        setAuthData(res.user, res.organization || null, userRole);
-        onNavigateToOnboarding({
-          role: userRole,
-          isSystemAdmin: isSA,
-          hasOrg,
-        });
-      }
-    } catch (err: any) {
-      setErrorCode(err.code || null);
-      setErrorMessage(err.message || "Unable to sign in. Please verify your credentials.");
-    } finally {
-      setIsSubmitting(false);
+      await authApi.resendVerification(email.trim());
+      setResend({ busy: false, status: "A fresh verification link has been sent to your email!" });
+    } catch (err) {
+      setResend({ busy: false, status: (err as Error).message || "Failed to resend verification link." });
     }
   };
 
-  const handle2faSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setErrorCode(null);
-
-    if (!totpCode.trim()) {
-      setErrorCode("VALIDATION_ERROR");
-      setErrorMessage(
-        isRecoveryCode
-          ? "Please enter your emergency recovery code."
-          : "Please enter the 6-digit authentication code."
-      );
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const res = await authApi.login2fa({
-        code: totpCode.trim(),
-        isRecoveryCode,
-      });
-      if (res.user) {
-        const userRole = res.role || (res.user.isSystemAdmin ? "SA" : "U");
-        const isSA = Boolean(res.user.isSystemAdmin || userRole === "SA");
-        const hasOrg = Boolean(res.organization);
-
-        setAuthData(res.user, res.organization || null, userRole);
-        onNavigateToOnboarding({
-          role: userRole,
-          isSystemAdmin: isSA,
-          hasOrg,
-        });
-      }
-    } catch (err: any) {
-      setErrorCode(err.code || "INVALID_2FA_CODE");
-      setErrorMessage(err.message || "Invalid authentication code.");
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Leaves the 2FA step, or switches between authenticator and recovery code.
+  const reset2fa = (next: { requires2fa?: boolean; isRecoveryCode?: boolean }) => {
+    if (next.requires2fa !== undefined) setRequires2fa(next.requires2fa);
+    if (next.isRecoveryCode !== undefined) setIsRecoveryCode(next.isRecoveryCode);
+    setCode("");
+    setError(null);
   };
 
-  const handleResendUnverified = async () => {
-    const targetEmail = loginEmail.trim();
-    if (!targetEmail) {
-      setResendStatus("Please enter your email address above first.");
-      return;
-    }
+  const forgotLink = (label: string) => (
+    <Button variant="link" size="sm" onClick={() => onSwitchView("forgot-password")}>
+      {label}
+    </Button>
+  );
 
-    try {
-      setIsResending(true);
-      setResendStatus(null);
-      await authApi.resendVerification(targetEmail);
-      setResendStatus("A fresh verification link has been sent to your email!");
-    } catch (err: any) {
-      setResendStatus(err.message || "Failed to resend verification link.");
-    } finally {
-      setIsResending(false);
-    }
-  };
-
-  const handleSignupSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setErrorCode(null);
-
-    if (!signupFirstName.trim() || !signupLastName.trim()) {
-      setErrorCode("VALIDATION_ERROR");
-      setErrorMessage("Please enter both your first name and last name.");
-      return;
-    }
-
-    if (!signupEmail.trim()) {
-      setErrorCode("VALIDATION_ERROR");
-      setErrorMessage("Please enter a valid email address.");
-      return;
-    }
-
-    if (signupPassword !== signupPasswordConfirm) {
-      setErrorCode("PASSWORD_MISMATCH");
-      setErrorMessage("Passwords do not match. Please ensure both fields are identical.");
-      return;
-    }
-
-    if (!acceptTerms) {
-      setErrorCode("TERMS_REQUIRED");
-      setErrorMessage("You must accept the Terms of Service and Privacy Policy to register.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await authApi.signup({
-        firstName: signupFirstName.trim(),
-        lastName: signupLastName.trim(),
-        email: signupEmail.trim(),
-        password: signupPassword,
-        passwordConfirmation: signupPasswordConfirm,
-        acceptTerms: true,
-      });
-      setSignupSuccess(true);
-    } catch (err: any) {
-      setErrorCode(err.code || null);
-      setErrorMessage(err.message || "Failed to register. Please check your information.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleForgotSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setErrorCode(null);
-
-    if (!forgotEmail.trim()) {
-      setErrorCode("VALIDATION_ERROR");
-      setErrorMessage("Please enter your account email address.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await authApi.forgotPassword(forgotEmail.trim());
-      setForgotSuccess(true);
-    } catch (err: any) {
-      setErrorCode(err.code || null);
-      setErrorMessage(err.message || "Failed to request password reset.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleResetSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setErrorCode(null);
-
-    if (!resetToken) {
-      setErrorCode("INVALID_TOKEN");
-      setErrorMessage("Missing or invalid reset token. Please request a new link.");
-      return;
-    }
-
-    if (resetPassword !== resetPasswordConfirm) {
-      setErrorCode("PASSWORD_MISMATCH");
-      setErrorMessage("Passwords do not match. Please ensure both fields are identical.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await authApi.resetPassword({
-        token: resetToken,
-        password: resetPassword,
-        passwordConfirmation: resetPasswordConfirm,
-      });
-      setResetSuccess(true);
-    } catch (err: any) {
-      setErrorCode(err.code || null);
-      setErrorMessage(err.message || "Failed to reset password. The link may have expired.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleResendFromVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setErrorCode(null);
-    setResendMsg(null);
-
-    if (!resendEmail.trim()) {
-      setErrorCode("VALIDATION_ERROR");
-      setErrorMessage("Please enter your email address.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const res = await authApi.resendVerification(resendEmail.trim());
-      setResendMsg(res.message);
-    } catch (err: any) {
-      setErrorCode(err.code || null);
-      setErrorMessage(err.message || "Failed to resend verification link.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // -------------------------------------------------------------
-  // Diagnostic Status Renderers for Login & 2FA (Frameless / No Cadre)
-  // -------------------------------------------------------------
-  const renderLoginAlert = () => {
-    if (!errorMessage) return null;
-
-    if (errorCode === "EMAIL_NOT_VERIFIED") {
-      return (
-        <Alert
-          appearance="inline"
-          variant="warning"
-          icon={<Mail className="w-4 h-4" />}
-          title="Verify your email first"
-          className="mb-4"
-          action={
+  // Diagnostic messages for the sign-in step, by error code.
+  const loginAlert = () => {
+    if (!error) return null;
+    const inline = (props: { variant: "error" | "warning"; title?: string; icon?: ReactNode; action?: ReactNode; children: ReactNode }) => (
+      <Alert appearance="inline" className="mb-4" {...props} />
+    );
+    switch (error.code) {
+      case "EMAIL_NOT_VERIFIED":
+        return inline({
+          variant: "warning",
+          icon: <Mail className="w-4 h-4" />,
+          title: "Verify your email first",
+          action: (
             <div className="flex items-center gap-2">
-              <Button
-                variant="link"
-                size="sm"
-                onClick={handleResendUnverified}
-                isLoading={isResending}
-                leftIcon={<Mail className="w-3.5 h-3.5" />}
-              >
-                {isResending ? "Sending verification email..." : "Resend verification email"}
+              <Button variant="link" size="sm" onClick={resendVerification} isLoading={resend.busy} leftIcon={<Mail className="w-3.5 h-3.5" />}>
+                {resend.busy ? "Sending verification email..." : "Resend verification email"}
               </Button>
-              {resendStatus && (
-                <span className="text-[11px] text-success-600 dark:text-success-400 font-medium">{resendStatus}</span>
-              )}
+              {resend.status && <span className="text-[11px] text-success-600 dark:text-success-400 font-medium">{resend.status}</span>}
             </div>
-          }
-        >
-          Your account is pending verification. Please click the confirmation link sent to your inbox.
-        </Alert>
-      );
+          ),
+          children: "Your account is pending verification. Please click the confirmation link sent to your inbox.",
+        });
+      case "ACCOUNT_LOCKED":
+        return inline({
+          variant: "error",
+          icon: <Lock className="w-4 h-4" />,
+          title: "Account temporarily locked",
+          action: forgotLink("Reset your password"),
+          children: `${error.message} For security, 5 consecutive failed sign-in attempts lock the account for 15 minutes.`,
+        });
+      case "ACCOUNT_SUSPENDED":
+        return inline({
+          variant: "error",
+          icon: <ShieldAlert className="w-4 h-4" />,
+          title: "Account suspended",
+          children: "Your account has been suspended by an administrator. Please contact your administrator or support.",
+        });
+      case "RATE_LIMITED":
+        return inline({ variant: "warning", icon: <Clock className="w-4 h-4" />, title: "Too many attempts", children: error.message });
+      case "INVALID_CREDENTIALS":
+        return inline({ variant: "error", title: "Invalid email or password", action: forgotLink("Forgot your password?"), children: "Please check your credentials and try again." });
+      default:
+        return inline({ variant: "error", children: error.message });
     }
-
-    if (errorCode === "ACCOUNT_LOCKED") {
-      return (
-        <Alert
-          appearance="inline"
-          variant="error"
-          icon={<Lock className="w-4 h-4" />}
-          title="Account temporarily locked"
-          className="mb-4"
-          action={
-            <Button variant="link" size="sm" onClick={() => onSwitchView("forgot-password")}>
-              Reset your password
-            </Button>
-          }
-        >
-          {errorMessage} For security, 5 consecutive failed sign-in attempts lock the account for 15 minutes.
-        </Alert>
-      );
-    }
-
-    if (errorCode === "ACCOUNT_SUSPENDED") {
-      return (
-        <Alert appearance="inline" variant="error" icon={<ShieldAlert className="w-4 h-4" />} title="Account suspended" className="mb-4">
-          Your account has been suspended by an administrator. Please contact your administrator or support.
-        </Alert>
-      );
-    }
-
-    if (errorCode === "RATE_LIMITED") {
-      return (
-        <Alert appearance="inline" variant="warning" icon={<Clock className="w-4 h-4" />} title="Too many attempts" className="mb-4">
-          {errorMessage}
-        </Alert>
-      );
-    }
-
-    if (errorCode === "INVALID_CREDENTIALS") {
-      return (
-        <Alert
-          appearance="inline"
-          variant="error"
-          title="Invalid email or password"
-          className="mb-4"
-          action={
-            <Button variant="link" size="sm" onClick={() => onSwitchView("forgot-password")}>
-              Forgot your password?
-            </Button>
-          }
-        >
-          Please check your credentials and try again.
-        </Alert>
-      );
-    }
-
-    return (
-      <Alert appearance="inline" variant="error" className="mb-4">
-        {errorMessage}
-      </Alert>
-    );
   };
 
-  const render2faAlert = () => {
-    if (!errorMessage) return null;
-
-    if (errorCode === "EXPIRED_SESSION") {
-      return (
-        <Alert
-          appearance="inline"
-          variant="warning"
-          icon={<Clock className="w-4 h-4" />}
-          title="Verification session expired"
-          action={
-            <Button
-              variant="link"
-              size="sm"
-              leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
-              onClick={() => {
-                setRequires2fa(false);
-                setTotpCode("");
-                setErrorMessage(null);
-                setErrorCode(null);
-              }}
-            >
-              Return to sign in
-            </Button>
-          }
-        >
-          Your temporary session has expired. Please sign in with your email and password again.
-        </Alert>
-      );
-    }
-
+  if (requires2fa) {
     return (
-      <Alert
-        appearance="inline"
-        variant="error"
-        action={
-          !isRecoveryCode && (
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => {
-                setIsRecoveryCode(true);
-                setTotpCode("");
-                setErrorMessage(null);
-                setErrorCode(null);
-              }}
-            >
-              Lost your device? Use an emergency recovery code
-            </Button>
-          )
-        }
+      <AuthModal
+        onClose={onClose}
+        title={isRecoveryCode ? "Emergency Recovery" : "Two-Factor Verification"}
+        description={isRecoveryCode ? "Enter an emergency recovery code to access your account" : "Enter the 6-digit code from your authenticator app"}
       >
-        {errorMessage}
-      </Alert>
+        <div className="space-y-4">
+          {error?.code === "EXPIRED_SESSION" ? (
+            <Alert
+              appearance="inline"
+              variant="warning"
+              icon={<Clock className="w-4 h-4" />}
+              title="Verification session expired"
+              action={
+                <Button variant="link" size="sm" leftIcon={<ArrowLeft className="w-3.5 h-3.5" />} onClick={() => reset2fa({ requires2fa: false })}>
+                  Return to sign in
+                </Button>
+              }
+            >
+              Your temporary session has expired. Please sign in with your email and password again.
+            </Alert>
+          ) : (
+            error && (
+              <Alert
+                appearance="inline"
+                variant="error"
+                action={
+                  !isRecoveryCode && (
+                    <Button variant="link" size="sm" onClick={() => reset2fa({ isRecoveryCode: true })}>
+                      Lost your device? Use an emergency recovery code
+                    </Button>
+                  )
+                }
+              >
+                {error.message}
+              </Alert>
+            )
+          )}
+
+          <form onSubmit={verify2fa} className="space-y-4">
+            <Input
+              label={isRecoveryCode ? "Emergency Recovery Code" : "Authenticator Code"}
+              inputMode={isRecoveryCode ? "text" : "numeric"}
+              autoFocus
+              required
+              placeholder={isRecoveryCode ? "ABCD-1234" : "123456"}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full text-center tracking-widest font-sans font-semibold tabular-nums text-lg"
+            />
+            <Button type="submit" fullWidth isLoading={busy}>
+              Verify Code
+            </Button>
+          </form>
+
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-2 text-center text-xs">
+            <Button variant="link" size="sm" onClick={() => reset2fa({ isRecoveryCode: !isRecoveryCode })}>
+              {isRecoveryCode ? "Use 6-digit authenticator code instead" : "Lost your device? Use a recovery code"}
+            </Button>
+            <Button variant="quiet" size="sm" leftIcon={<ArrowLeft className="w-3.5 h-3.5" />} onClick={() => reset2fa({ requires2fa: false })}>
+              Back to email & password
+            </Button>
+          </div>
+        </div>
+      </AuthModal>
     );
-  };
-
-  // Titles & Descriptions for the Modal Header
-  const modalConfigs = {
-    login: {
-      title: requires2fa
-        ? (isRecoveryCode ? "Emergency Recovery" : "Two-Factor Verification")
-        : "Sign In",
-      description: requires2fa
-        ? (isRecoveryCode
-            ? "Enter an emergency recovery code to access your account"
-            : "Enter the 6-digit code from your authenticator app")
-        : "Access your workspace and projects",
-      maxWidth: "md" as const,
-    },
-    signup: {
-      title: signupSuccess ? "Check Your Inbox" : "Create Account",
-      description: signupSuccess
-        ? "We sent a verification link to your email"
-        : "Start organizing sprints and collaborating with your team",
-      maxWidth: signupSuccess ? ("md" as const) : ("lg" as const),
-    },
-    verify: {
-      title:
-        verifyStatus === "success"
-          ? "Email Verified"
-          : verifyStatus === "error"
-            ? "Verification Link Expired"
-            : "Email Verification",
-      description:
-        verifyStatus === "success"
-          ? "Your account is active and ready to use"
-          : verifyStatus === "error"
-            ? "Request a fresh verification link for your account"
-            : "Confirming your email address for Trenno",
-      maxWidth: "md" as const,
-    },
-    "forgot-password": {
-      title: forgotSuccess ? "Check Your Inbox" : "Reset Password",
-      description: forgotSuccess
-        ? "We've sent recovery instructions to your email"
-        : "We'll send recovery instructions to your email",
-      maxWidth: "md" as const,
-    },
-    "reset-password": {
-      title: resetSuccess
-        ? "Password Updated"
-        : resetTokenStatus === "invalid"
-          ? "Invalid Reset Link"
-          : "Set New Password",
-      description: resetSuccess
-        ? "Your password has been changed successfully"
-        : resetTokenStatus === "invalid"
-          ? "This link cannot be used to reset your password"
-          : "Create a secure new password for your account",
-      maxWidth: "md" as const,
-    },
-  };
-
-  const currentConfig = modalConfigs[view];
+  }
 
   return (
-    <>
-      <Modal
-        isOpen={view !== null}
-        onClose={onClose}
-        title={currentConfig.title}
-        description={currentConfig.description}
-        maxWidth={currentConfig.maxWidth}
-      >
-        {/* ------------------------------------------------------- */}
-        {/* VIEW: LOGIN                                             */}
-        {/* ------------------------------------------------------- */}
-        {view === "login" && (
-          <div>
-            {!requires2fa ? (
-              <>
-                {renderLoginAlert()}
-
-                <form onSubmit={handleLoginSubmit} className="space-y-4">
-                  <div>
-                    <Input
-                      id="popup-login-email"
-                      label="Email address"
-                      type="email"
-                      name="email"
-                      autoComplete="email"
-                      required
-                      placeholder="name@company.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                    />
-                  </div>
-
-                  <Input
-                    id="popup-login-password"
-                    label="Password"
-                    labelAction={
-                      <Button variant="link" size="sm" onClick={() => onSwitchView("forgot-password")}>
-                        Forgot password?
-                      </Button>
-                    }
-                    type="password"
-                    name="password"
-                    autoComplete="current-password"
-                    required
-                    placeholder="••••••••••••"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                  />
-
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    isLoading={isSubmitting}
-                    className="mt-2"
-                  >
-                    Sign In to Workspace
-                  </Button>
-                </form>
-
-                <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800 text-center text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-                  <span>
-                    Don't have an account?{" "}
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="font-bold"
-                      onClick={() => onSwitchView("signup")}
-                    >
-                      Sign up
-                    </Button>
-                  </span>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    onClick={onClose}
-                  >
-                    Back
-                  </Button>
-                </div>
-              </>
-            ) : (
-              /* 2FA view */
-              <div className="space-y-4">
-                {render2faAlert()}
-
-                <form onSubmit={handle2faSubmit} className="space-y-4">
-                  <div>
-                    <Input
-                      id="popup-2fa-code"
-                      label={isRecoveryCode ? "Emergency Recovery Code" : "Authenticator Code"}
-                      type="text"
-                      inputMode={isRecoveryCode ? "text" : "numeric"}
-                      autoFocus
-                      required
-                      placeholder={isRecoveryCode ? "ABCD-1234" : "123456"}
-                      value={totpCode}
-                      onChange={(e) => setTotpCode(e.target.value)}
-                      className="w-full text-center tracking-widest font-sans font-semibold tabular-nums text-lg"
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    isLoading={isSubmitting}
-                  >
-                    Verify Code
-                  </Button>
-                </form>
-
-                <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-2 text-center text-xs">
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => {
-                      setIsRecoveryCode(!isRecoveryCode);
-                      setTotpCode("");
-                      setErrorMessage(null);
-                      setErrorCode(null);
-                    }}
-                  >
-                    {isRecoveryCode
-                      ? "Use 6-digit authenticator code instead"
-                      : "Lost your device? Use a recovery code"}
-                  </Button>
-
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
-                    onClick={() => {
-                      setRequires2fa(false);
-                      setTotpCode("");
-                      setErrorMessage(null);
-                      setErrorCode(null);
-                    }}
-                  >
-                    Back to email & password
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ------------------------------------------------------- */}
-        {/* VIEW: SIGNUP                                            */}
-        {/* ------------------------------------------------------- */}
-        {view === "signup" && (
-          <div>
-            {!signupSuccess ? (
-              <>
-                {errorMessage && (
-                  <Alert
-                    appearance="inline"
-                    variant="error"
-                    title={errorCode === "PASSWORD_MISMATCH" ? "Password mismatch" : "Registration failed"}
-                    className="mb-4"
-                  >
-                    {errorMessage}
-                  </Alert>
-                )}
-
-                <form onSubmit={handleSignupSubmit} className="space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Input
-                      id="popup-signup-fn"
-                      label="First Name"
-                        type="text"
-                        required
-                        placeholder="Alex"
-                        value={signupFirstName}
-                        onChange={(e) => setSignupFirstName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Input
-                      id="popup-signup-ln"
-                      label="Last Name"
-                        type="text"
-                        required
-                        placeholder="Rivera"
-                        value={signupLastName}
-                        onChange={(e) => setSignupLastName(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Input
-                      id="popup-signup-email"
-                      label="Email address"
-                      type="email"
-                      required
-                      placeholder="name@company.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <Input
-                      id="popup-signup-pass"
-                      label="Password"
-                      type="password"
-                      required
-                      placeholder="••••••••••••"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                    />
-                    <PasswordChecklist password={signupPassword} />
-                  </div>
-
-                  <div>
-                    <Input
-                      id="popup-signup-confirm"
-                      label="Confirm Password"
-                      type="password"
-                      required
-                      placeholder="••••••••••••"
-                      value={signupPasswordConfirm}
-                      onChange={(e) => setSignupPasswordConfirm(e.target.value)}
-                    />
-                    <PasswordMatchIndicator
-                      password={signupPassword}
-                      confirmPassword={signupPasswordConfirm}
-                    />
-                  </div>
-
-                  <Checkbox
-                    className="pt-1"
-                    checked={acceptTerms}
-                    onChange={(e) => setAcceptTerms(e.target.checked)}
-                    required
-                    label={
-                      <>
-                        I agree to the{" "}
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="underline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setTermsOpen(true);
-                          }}
-                        >
-                          Terms of Service
-                        </Button>{" "}
-                        and{" "}
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="underline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setPrivacyOpen(true);
-                          }}
-                        >
-                          Privacy Policy
-                        </Button>
-                        .
-                      </>
-                    }
-                  />
-
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    isLoading={isSubmitting}
-                    className="mt-2"
-                  >
-                    Create Free Account
-                  </Button>
-                </form>
-
-                <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-center text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-                  <span>
-                    Already registered?{" "}
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="font-bold"
-                      onClick={() => onSwitchView("login")}
-                    >
-                      Sign in
-                    </Button>
-                  </span>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    onClick={onClose}
-                  >
-                    Back
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-4 space-y-4">
-                <div className="mx-auto w-12 h-12 bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
-                  <Mail className="w-6 h-6" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 font-sans">
-                    Verification link sent
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans leading-relaxed max-w-sm mx-auto">
-                    We've sent an activation link to <strong className="font-semibold text-zinc-950 dark:text-white">{signupEmail}</strong>. Click the link in your email to activate your account.
-                  </p>
-                </div>
-                <div className="pt-2">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    onClick={() => onSwitchView("login")}
-                    rightIcon={<ArrowRight className="w-4 h-4" />}
-                  >
-                    Proceed to Sign In
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ------------------------------------------------------- */}
-        {/* VIEW: VERIFY                                            */}
-        {/* ------------------------------------------------------- */}
-        {view === "verify" && (
-          <div>
-            {verifyStatus === "loading" && (
-              <div className="py-8 text-center space-y-3">
-                <Spinner size="lg" className="mx-auto" />
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">
-                  Confirming your email verification token...
-                </p>
-              </div>
-            )}
-
-            {verifyStatus === "success" && (
-              <div className="text-center py-4 space-y-4">
-                <div className="mx-auto w-12 h-12 bg-success-500/10 text-success-600 dark:text-success-400 flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 font-sans">
-                    Email Confirmed Successfully
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans leading-relaxed max-w-sm mx-auto">
-                    Your account is now fully active. You can sign in to access your organization and projects.
-                  </p>
-                </div>
-                <div className="pt-2">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    onClick={() => onSwitchView("login")}
-                    rightIcon={<ArrowRight className="w-4 h-4" />}
-                  >
-                    Proceed to Sign In
-                  </Button>
-                </div>
-
-                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-none border border-zinc-200 dark:border-zinc-700/80 text-left text-xs space-y-1.5 mt-4">
-                  <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold font-sans">
-                    <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
-                    <span>Workspace Security & Legal Terms</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal font-sans">
-                    Your workspace account adheres to encrypted data protection and service terms:
-                  </p>
-                  <div className="flex items-center gap-3 pt-0.5 text-[11px]">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="underline"
-                      onClick={() => setTermsOpen(true)}
-                    >
-                      Terms of Service
-                    </Button>
-                    <span className="text-zinc-300 dark:text-zinc-700">&middot;</span>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="underline"
-                      onClick={() => setPrivacyOpen(true)}
-                    >
-                      Privacy Policy
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {(verifyStatus === "error" || verifyStatus === "prompt") && (
-              <div className="space-y-4 text-left">
-                <Alert appearance="inline" variant="error" title="Verification link expired or invalid">
-                  {errorMessage || "The link is invalid or has expired. Enter your email below to receive a new verification link."}
-                </Alert>
-
-                {resendMsg && (
-                  <Alert appearance="inline" variant="success" icon={<ShieldCheck className="w-4 h-4" />}>
-                    {resendMsg}
-                  </Alert>
-                )}
-
-                <form onSubmit={handleResendFromVerify} className="space-y-3">
-                  <div>
-                    <Input
-                      id="popup-verify-email"
-                      label="Your email address"
-                      type="email"
-                      required
-                      placeholder="name@company.com"
-                      value={resendEmail}
-                      onChange={(e) => setResendEmail(e.target.value)}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    isLoading={isSubmitting}
-                    leftIcon={<Mail className="w-4 h-4" />}
-                  >
-                    Resend Verification Email
-                  </Button>
-                </form>
-
-                <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-center text-xs flex items-center justify-between">
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="font-bold"
-                    onClick={() => onSwitchView("login")}
-                  >
-                    Back to Sign In
-                  </Button>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    onClick={onClose}
-                  >
-                    Back
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ------------------------------------------------------- */}
-        {/* VIEW: FORGOT PASSWORD                                   */}
-        {/* ------------------------------------------------------- */}
-        {view === "forgot-password" && (
-          <div>
-            {!forgotSuccess ? (
-              <div className="space-y-4">
-                {errorMessage && (
-                  <Alert appearance="inline" variant="error">
-                    {errorMessage}
-                  </Alert>
-                )}
-
-                <form onSubmit={handleForgotSubmit} className="space-y-4">
-                  <div>
-                    <Input
-                      id="popup-forgot-email"
-                      label="Account Email"
-                      type="email"
-                      required
-                      placeholder="name@company.com"
-                      value={forgotEmail}
-                      onChange={(e) => {
-                        setForgotEmail(e.target.value);
-                      }}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    isLoading={isSubmitting}
-                  >
-                    Send Reset Link
-                  </Button>
-                </form>
-
-                <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-center text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-                  <Button
-                    variant="link"
-                    size="sm"
-                    leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
-                    className="font-bold"
-                    onClick={() => onSwitchView("login")}
-                  >
-                    Back to sign in
-                  </Button>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    onClick={onClose}
-                  >
-                    Back
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-4 space-y-4">
-                <div className="mx-auto w-12 h-12 bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
-                  <Mail className="w-6 h-6" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 font-sans">
-                    Check your email
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans leading-relaxed max-w-sm mx-auto">
-                    If an account is associated with <span className="font-semibold text-zinc-900 dark:text-zinc-100">{forgotEmail}</span>, we've sent password reset instructions.
-                  </p>
-                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-sans pt-1">
-                    The reset link will expire in 30 minutes. Please check your spam folder if it doesn't arrive.
-                  </p>
-                </div>
-
-                <div className="pt-2 space-y-3">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    onClick={() => onSwitchView("login")}
-                  >
-                    Return to Sign In
-                  </Button>
-
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    onClick={() => {
-                      setForgotSuccess(false);
-                      setForgotEmail("");
-                    }}
-                  >
-                    Send to a different email address
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ------------------------------------------------------- */}
-        {/* VIEW: RESET PASSWORD                                    */}
-        {/* ------------------------------------------------------- */}
-        {view === "reset-password" && (
-          <div>
-            {resetTokenStatus === "validating" ? (
-              <div className="py-8 text-center space-y-3">
-                <Spinner size="lg" className="mx-auto" />
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">
-                  Verifying password reset security link...
-                </p>
-              </div>
-            ) : resetTokenStatus === "invalid" ? (
-              <div className="text-center py-4 space-y-4">
-                <div className="mx-auto w-12 h-12 bg-destructive-500/10 text-destructive-600 dark:text-destructive-400 flex items-center justify-center">
-                  <AlertCircle className="w-6 h-6" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 font-sans">
-                    Reset Link Invalid or Expired
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans leading-relaxed max-w-sm mx-auto">
-                    {resetTokenError || "This password reset link is invalid or has already been used. For your security, reset links can only be used once and expire after 30 minutes."}
-                  </p>
-                </div>
-
-                <div className="pt-2 space-y-3">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    onClick={() => onSwitchView("forgot-password")}
-                  >
-                    Request New Reset Link
-                  </Button>
-
-                  <div className="pt-1">
-                    <Button
-                      variant="quiet"
-                      size="sm"
-                      onClick={() => onSwitchView("login")}
-                    >
-                      Return to Sign In
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : !resetSuccess ? (
-              <>
-                {errorMessage && (
-                  <Alert appearance="inline" variant="error" className="mb-4">
-                    {errorMessage}
-                  </Alert>
-                )}
-
-                <form onSubmit={handleResetSubmit} className="space-y-3.5">
-                  <div>
-                    <Input
-                      id="popup-reset-pass"
-                      label="New Password"
-                      type="password"
-                      required
-                      placeholder="••••••••••••"
-                      value={resetPassword}
-                      onChange={(e) => setResetPassword(e.target.value)}
-                    />
-                    <PasswordChecklist password={resetPassword} />
-                  </div>
-
-                  <div>
-                    <Input
-                      id="popup-reset-confirm"
-                      label="Confirm New Password"
-                      type="password"
-                      required
-                      placeholder="••••••••••••"
-                      value={resetPasswordConfirm}
-                      onChange={(e) => setResetPasswordConfirm(e.target.value)}
-                    />
-                    <PasswordMatchIndicator
-                      password={resetPassword}
-                      confirmPassword={resetPasswordConfirm}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    isLoading={isSubmitting}
-                    disabled={!resetToken}
-                  >
-                    Reset Password
-                  </Button>
-                </form>
-
-                <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-center text-xs">
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="font-bold"
-                    onClick={() => onSwitchView("login")}
-                  >
-                    Return to Sign In
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-4 space-y-4">
-                <div className="mx-auto w-12 h-12 bg-success-500/10 text-success-600 dark:text-success-400 flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 font-sans">
-                    Password Changed Successfully
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans leading-relaxed max-w-sm mx-auto">
-                    Your password has been changed. All other active sessions were revoked for security.
-                  </p>
-                </div>
-
-                <div className="pt-2">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    onClick={() => onSwitchView("login")}
-                    rightIcon={<ArrowRight className="w-4 h-4" />}
-                  >
-                    Sign In With New Password
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-
-      {/* Privacy & Terms Modals */}
-      <PrivacyModal
-        isOpen={privacyOpen}
-        onClose={() => setPrivacyOpen(false)}
-      />
-      <TermsModal
-        isOpen={termsOpen}
-        onClose={() => setTermsOpen(false)}
-      />
-    </>
+    <AuthModal onClose={onClose} title="Sign In" description="Access your workspace and projects">
+      {loginAlert()}
+      <form onSubmit={login} className="space-y-4">
+        <Input label="Email address" type="email" name="email" autoComplete="email" required placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input
+          label="Password"
+          labelAction={forgotLink("Forgot password?")}
+          type="password"
+          name="password"
+          autoComplete="current-password"
+          required
+          placeholder="••••••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button type="submit" fullWidth isLoading={busy} className="mt-2">
+          Sign In to Workspace
+        </Button>
+      </form>
+      <Footer onBack={onClose} roomy>
+        <span>
+          Don't have an account?{" "}
+          <Button variant="link" size="sm" className="font-bold" onClick={() => onSwitchView("signup")}>
+            Sign up
+          </Button>
+        </span>
+      </Footer>
+    </AuthModal>
   );
-};
+}
+
+// ---------- Sign-up ----------
+
+function SignupView({ onClose, onSwitchView }: ViewProps) {
+  const { error, fail, busy, submit } = useAuthForm();
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "" });
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const signup = submit(async () => {
+    const { firstName, lastName, email } = form;
+    if (!firstName.trim() || !lastName.trim()) return fail("VALIDATION_ERROR", "Please enter both your first name and last name.");
+    if (!email.trim()) return fail("VALIDATION_ERROR", "Please enter a valid email address.");
+    if (password !== confirm) return fail("PASSWORD_MISMATCH", "Passwords do not match. Please ensure both fields are identical.");
+    if (!acceptTerms) return fail("TERMS_REQUIRED", "You must accept the Terms of Service and Privacy Policy to register.");
+    await authApi.signup({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password, passwordConfirmation: confirm, acceptTerms: true });
+    setDone(true);
+  }, "Failed to register. Please check your information.");
+
+  if (done) {
+    return (
+      <AuthModal onClose={onClose} title="Check Your Inbox" description="We sent a verification link to your email">
+        <Result tone="brand" icon={<Mail className="w-6 h-6" />} title="Verification link sent" actions={<ToSignIn onSwitchView={onSwitchView} />}>
+          We've sent an activation link to <strong className="font-semibold text-zinc-950 dark:text-white">{form.email}</strong>. Click the link in your email to activate your
+          account.
+        </Result>
+      </AuthModal>
+    );
+  }
+
+  const text = (key: keyof typeof form) => ({ value: form[key], onChange: (e: { target: { value: string } }) => setForm({ ...form, [key]: e.target.value }) });
+
+  return (
+    <AuthModal onClose={onClose} title="Create Account" description="Start organizing sprints and collaborating with your team" wide>
+      {error && (
+        <Alert appearance="inline" variant="error" title={error.code === "PASSWORD_MISMATCH" ? "Password mismatch" : "Registration failed"} className="mb-4">
+          {error.message}
+        </Alert>
+      )}
+      <form onSubmit={signup} className="space-y-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input label="First Name" required placeholder="Alex" {...text("firstName")} />
+          <Input label="Last Name" required placeholder="Rivera" {...text("lastName")} />
+        </div>
+        <Input label="Email address" type="email" required placeholder="name@company.com" {...text("email")} />
+        <PasswordPair password={password} confirm={confirm} setPassword={setPassword} setConfirm={setConfirm} labels={["Password", "Confirm Password"]} />
+        <TermsCheckbox className="pt-1" checked={acceptTerms} onChange={setAcceptTerms} />
+        <Button type="submit" fullWidth isLoading={busy} className="mt-2">
+          Create Free Account
+        </Button>
+      </form>
+      <Footer onBack={onClose}>
+        <span>
+          Already registered?{" "}
+          <Button variant="link" size="sm" className="font-bold" onClick={() => onSwitchView("login")}>
+            Sign in
+          </Button>
+        </span>
+      </Footer>
+    </AuthModal>
+  );
+}
+
+// ---------- Email verification ----------
+
+function VerifyView({ onClose, onSwitchView }: ViewProps) {
+  const { error, fail, busy, submit } = useAuthForm();
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState<string | null>(null);
+  const legal = useLegalModals();
+
+  useEffect(() => {
+    const t = token();
+    if (!t) return onSwitchView("login");
+    let live = true;
+    authApi
+      .verifyEmail(t)
+      .then(() => live && setStatus("success"))
+      .catch((err: ApiError) => {
+        if (!live) return;
+        setStatus("error");
+        fail(err.code || null, err.message || "The verification link is invalid or has expired.");
+      });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const resend = submit(async () => {
+    setSent(null);
+    if (!email.trim()) return fail("VALIDATION_ERROR", "Please enter your email address.");
+    setSent((await authApi.resendVerification(email.trim())).message);
+  }, "Failed to resend verification link.");
+
+  const titles = {
+    loading: ["Email Verification", "Confirming your email address for Trenno"],
+    success: ["Email Verified", "Your account is active and ready to use"],
+    error: ["Verification Link Expired", "Request a fresh verification link for your account"],
+  };
+
+  return (
+    <AuthModal onClose={onClose} title={titles[status][0]} description={titles[status][1]}>
+      {status === "loading" && <Waiting text="Confirming your email verification token..." />}
+
+      {status === "success" && (
+        <>
+          <Result tone="success" icon={<ShieldCheck className="w-6 h-6" />} title="Email Confirmed Successfully" actions={<ToSignIn onSwitchView={onSwitchView} />}>
+            Your account is now fully active. You can sign in to access your organization and projects.
+          </Result>
+          <div className="p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-none border border-zinc-200 dark:border-zinc-700/80 text-left text-xs space-y-1.5">
+            <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold font-sans">
+              <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
+              <span>Workspace Security & Legal Terms</span>
+            </div>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal font-sans">Your workspace account adheres to encrypted data protection and service terms:</p>
+            <div className="flex items-center gap-3 pt-0.5 text-[11px]">
+              <Button variant="link" size="sm" className="underline" onClick={legal.openTerms}>
+                Terms of Service
+              </Button>
+              <span className="text-zinc-300 dark:text-zinc-700">&middot;</span>
+              <Button variant="link" size="sm" className="underline" onClick={legal.openPrivacy}>
+                Privacy Policy
+              </Button>
+            </div>
+          </div>
+          {legal.modals}
+        </>
+      )}
+
+      {status === "error" && (
+        <div className="space-y-4 text-left">
+          <Alert appearance="inline" variant="error" title="Verification link expired or invalid">
+            {error?.message || "The link is invalid or has expired. Enter your email below to receive a new verification link."}
+          </Alert>
+          {sent && (
+            <Alert appearance="inline" variant="success" icon={<ShieldCheck className="w-4 h-4" />}>
+              {sent}
+            </Alert>
+          )}
+          <form onSubmit={resend} className="space-y-3">
+            <Input label="Your email address" type="email" required placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Button type="submit" fullWidth isLoading={busy} leftIcon={<Mail className="w-4 h-4" />}>
+              Resend Verification Email
+            </Button>
+          </form>
+          <Footer onBack={onClose}>
+            <Button variant="link" size="sm" className="font-bold" onClick={() => onSwitchView("login")}>
+              Back to Sign In
+            </Button>
+          </Footer>
+        </div>
+      )}
+    </AuthModal>
+  );
+}
+
+// ---------- Forgot password ----------
+
+function ForgotView({ onClose, onSwitchView }: ViewProps) {
+  const { error, fail, busy, submit } = useAuthForm();
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const send = submit(async () => {
+    if (!email.trim()) return fail("VALIDATION_ERROR", "Please enter your account email address.");
+    await authApi.forgotPassword(email.trim());
+    setSent(true);
+  }, "Failed to request password reset.");
+
+  return (
+    <AuthModal
+      onClose={onClose}
+      title={sent ? "Check Your Inbox" : "Reset Password"}
+      description={sent ? "We've sent recovery instructions to your email" : "We'll send recovery instructions to your email"}
+    >
+      {sent ? (
+        <Result
+          tone="brand"
+          icon={<Mail className="w-6 h-6" />}
+          title="Check your email"
+          actions={
+            <>
+              <ToSignIn onSwitchView={onSwitchView} label="Return to Sign In" arrow={false} />
+              <Button
+                variant="quiet"
+                size="sm"
+                onClick={() => {
+                  setSent(false);
+                  setEmail("");
+                }}
+              >
+                Send to a different email address
+              </Button>
+            </>
+          }
+        >
+          <p>
+            If an account is associated with <span className="font-semibold text-zinc-900 dark:text-zinc-100">{email}</span>, we've sent password reset instructions.
+          </p>
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 pt-1">The reset link will expire in 30 minutes. Please check your spam folder if it doesn't arrive.</p>
+        </Result>
+      ) : (
+        <div className="space-y-4">
+          {error && (
+            <Alert appearance="inline" variant="error">
+              {error.message}
+            </Alert>
+          )}
+          <form onSubmit={send} className="space-y-4">
+            <Input label="Account Email" type="email" required placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Button type="submit" fullWidth isLoading={busy}>
+              Send Reset Link
+            </Button>
+          </form>
+          <Footer onBack={onClose}>
+            <Button variant="link" size="sm" leftIcon={<ArrowLeft className="w-3.5 h-3.5" />} className="font-bold" onClick={() => onSwitchView("login")}>
+              Back to sign in
+            </Button>
+          </Footer>
+        </div>
+      )}
+    </AuthModal>
+  );
+}
+
+// ---------- Reset password ----------
+
+function ResetView({ onClose, onSwitchView }: ViewProps) {
+  const { error, fail, busy, submit } = useAuthForm();
+  const [link, setLink] = useState<{ status: "validating" | "valid" | "invalid"; token?: string; error?: string }>({ status: "validating" });
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const t = token();
+    if (!t) return setLink({ status: "invalid", error: "Missing password reset token in link. Please request a new password reset link." });
+    let live = true;
+    authApi
+      .verifyResetToken(t)
+      .then(() => live && setLink({ status: "valid", token: t }))
+      .catch((err: Error) => live && setLink({ status: "invalid", error: err.message || "Password reset link is invalid or has already been used." }));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const reset = submit(async () => {
+    if (!link.token) return fail("INVALID_TOKEN", "Missing or invalid reset token. Please request a new link.");
+    if (password !== confirm) return fail("PASSWORD_MISMATCH", "Passwords do not match. Please ensure both fields are identical.");
+    await authApi.resetPassword({ token: link.token, password, passwordConfirmation: confirm });
+    setDone(true);
+  }, "Failed to reset password. The link may have expired.");
+
+  const [title, description] = done
+    ? ["Password Updated", "Your password has been changed successfully"]
+    : link.status === "invalid"
+    ? ["Invalid Reset Link", "This link cannot be used to reset your password"]
+    : ["Set New Password", "Create a secure new password for your account"];
+
+  return (
+    <AuthModal onClose={onClose} title={title} description={description}>
+      {link.status === "validating" ? (
+        <Waiting text="Verifying password reset security link..." />
+      ) : link.status === "invalid" ? (
+        <Result
+          tone="danger"
+          icon={<AlertCircle className="w-6 h-6" />}
+          title="Reset Link Invalid or Expired"
+          actions={
+            <>
+              <Button fullWidth onClick={() => onSwitchView("forgot-password")}>
+                Request New Reset Link
+              </Button>
+              <div className="pt-1">
+                <Button variant="quiet" size="sm" onClick={() => onSwitchView("login")}>
+                  Return to Sign In
+                </Button>
+              </div>
+            </>
+          }
+        >
+          {link.error ||
+            "This password reset link is invalid or has already been used. For your security, reset links can only be used once and expire after 30 minutes."}
+        </Result>
+      ) : done ? (
+        <Result
+          tone="success"
+          icon={<ShieldCheck className="w-6 h-6" />}
+          title="Password Changed Successfully"
+          actions={<ToSignIn onSwitchView={onSwitchView} label="Sign In With New Password" />}
+        >
+          Your password has been changed. All other active sessions were revoked for security.
+        </Result>
+      ) : (
+        <>
+          {error && (
+            <Alert appearance="inline" variant="error" className="mb-4">
+              {error.message}
+            </Alert>
+          )}
+          <form onSubmit={reset} className="space-y-3.5">
+            <PasswordPair password={password} confirm={confirm} setPassword={setPassword} setConfirm={setConfirm} labels={["New Password", "Confirm New Password"]} />
+            <Button type="submit" fullWidth isLoading={busy} disabled={!link.token}>
+              Reset Password
+            </Button>
+          </form>
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-center text-xs">
+            <Button variant="link" size="sm" className="font-bold" onClick={() => onSwitchView("login")}>
+              Return to Sign In
+            </Button>
+          </div>
+        </>
+      )}
+    </AuthModal>
+  );
+}

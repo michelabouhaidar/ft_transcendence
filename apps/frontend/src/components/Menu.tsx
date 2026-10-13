@@ -1,4 +1,5 @@
-import { ReactNode, useEffect, useId, useRef, useState, KeyboardEvent } from "react";
+import { KeyboardEvent, ReactNode, useEffect, useId, useRef, useState } from "react";
+import { useClickOutside } from "../lib/hooks";
 import { IconButton } from "./IconButton";
 
 export interface MenuItem {
@@ -30,14 +31,7 @@ export function Menu({ label, icon, items, onSelect, title, align = "right", cla
   const listRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const close = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [isOpen]);
+  useClickOutside([containerRef], () => setIsOpen(false), isOpen);
 
   useEffect(() => {
     if (isOpen) {

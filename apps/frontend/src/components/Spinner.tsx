@@ -1,54 +1,18 @@
-import { SVGAttributes } from "react";
+import { ComponentProps } from "react";
 
-export type SpinnerSize = "xs" | "sm" | "md" | "lg" | "xl";
-export type SpinnerVariant = "brand" | "white" | "muted" | "current";
-
-export interface SpinnerProps extends SVGAttributes<SVGSVGElement> {
-  size?: SpinnerSize;
-  variant?: SpinnerVariant;
+export interface SpinnerProps extends ComponentProps<"svg"> {
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  variant?: "brand" | "white" | "muted" | "current";
   label?: string;
 }
 
-const sizeStyles: Record<SpinnerSize, string> = {
-  xs: "h-3 w-3",
-  sm: "h-4 w-4",
-  md: "h-5 w-5",
-  lg: "h-7 w-7",
-  xl: "h-10 w-10",
-};
+const SIZES = { xs: "h-3 w-3", sm: "h-4 w-4", md: "h-5 w-5", lg: "h-7 w-7", xl: "h-10 w-10" };
+const COLORS = { brand: "text-brand-600", white: "text-white", muted: "text-zinc-400 dark:text-zinc-500", current: "text-current" };
 
-const variantStyles: Record<SpinnerVariant, string> = {
-  brand: "text-brand-600",
-  white: "text-white",
-  muted: "text-zinc-400 dark:text-zinc-500",
-  current: "text-current",
-};
-
-export function Spinner({
-  size = "md",
-  variant = "brand",
-  label = "Loading...",
-  className = "",
-  ...props
-}: SpinnerProps) {
+export function Spinner({ size = "md", variant = "brand", label = "Loading...", className = "", ...props }: SpinnerProps) {
   return (
-    <svg
-      role="status"
-      aria-label={label}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`animate-spin ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
-      {...props}
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="3.5"
-      />
+    <svg role="status" aria-label={label} viewBox="0 0 24 24" fill="none" className={`animate-spin ${SIZES[size]} ${COLORS[variant]} ${className}`} {...props}>
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3.5" />
       <path
         className="opacity-90"
         fill="currentColor"
