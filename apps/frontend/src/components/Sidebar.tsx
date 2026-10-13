@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { BarChart3, Bell, Building2, FolderKanban, Lock, Mail, PanelLeftClose, Rocket, Search, Settings, ShieldAlert, UserCheck, Users, X } from "lucide-react";
+import { Bell, Building2, FolderKanban, Lock, Mail, PanelLeftClose, Rocket, Search, Settings, ShieldAlert, UserCheck, Users, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 import { Avatar } from "./Avatar";
