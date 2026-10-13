@@ -25,7 +25,6 @@ const exact = (p: string) => (path: string) => path === p;
 const WORKSPACE: NavItem[] = [
   { label: "Projects", path: "/projects", icon: icon(FolderKanban), active: (p) => p === "/projects" || p === "/onboarding" || p.startsWith("/projects/") },
   { label: "Search", path: "/search", icon: icon(Search), active: exact("/search") },
-  { label: "Analytics", path: "/analytics", icon: icon(BarChart3), active: exact("/analytics") },
   { label: "Notifications", path: "/notifications", icon: icon(Bell), active: exact("/notifications") },
   { label: "Friends", path: "/friends", icon: icon(UserCheck), active: exact("/friends") },
 ];
