@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { SubmitEvent, ReactNode, useEffect, useState } from "react";
 import { AlertCircle, ArrowLeft, ArrowRight, Clock, Lock, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
 import { authApi, LoginResponse } from "../api/auth";
 import type { ApiError } from "../api/http";
@@ -60,7 +60,7 @@ function useAuthForm() {
   const [error, setError] = useState<{ code: string | null; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const fail = (code: string | null, message: string) => setError({ code, message });
-  const submit = (action: () => Promise<unknown>, fallback: string, fallbackCode: string | null = null) => async (e: FormEvent) => {
+  const submit = (action: () => Promise<unknown>, fallback: string, fallbackCode: string | null = null) => async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setBusy(true);
