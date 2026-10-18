@@ -15,7 +15,7 @@ export function ThemeToggle({ variant = "switch", className = "" }: { variant?: 
         aria-label={`Switch to ${next} mode`}
         title={`Switch to ${next} mode`}
         className={`inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded-none transition-all duration-200 border text-xs font-sans font-semibold tracking-wide
-          bg-white hover:bg-zinc-100 text-zinc-800 border-zinc-300 shadow-xs dark:bg-dark-card dark:hover:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700
+          bg-white hover:bg-zinc-100 text-zinc-800 border-zinc-300 dark:bg-dark-card dark:hover:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700
           focus:outline-none focus:ring-2 focus:ring-brand-600/40 cursor-pointer ${className}`}
       >
         {isDark ? (
@@ -62,7 +62,7 @@ export function ThemeToggle({ variant = "switch", className = "" }: { variant?: 
           isDark ? "bg-brand-600" : "bg-zinc-600 hover:bg-zinc-500"
         }`}
       >
-        <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow-xs transition-transform duration-200 ease-in-out ${isDark ? "translate-x-3" : "translate-x-0"}`} />
+        <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white transition-transform duration-200 ease-in-out ${isDark ? "translate-x-3" : "translate-x-0"}`} />
       </button>
       {iconButton("dark", isDark)}
     </div>

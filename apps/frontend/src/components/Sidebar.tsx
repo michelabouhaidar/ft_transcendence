@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { Bell, Building2, FolderKanban, Lock, Mail, PanelLeftClose, Rocket, Search, Settings, ShieldAlert, UserCheck, Users, X } from "lucide-react";
+import { Bell, Building2, FolderKanban, Lock, PanelLeftClose, Rocket, Search, Settings, ShieldAlert, UserCheck, Users, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 import { Avatar } from "./Avatar";
@@ -28,9 +28,8 @@ const WORKSPACE: NavItem[] = [
   { label: "Notifications", path: "/notifications", icon: icon(Bell), active: exact("/notifications") },
   { label: "Friends", path: "/friends", icon: icon(UserCheck), active: exact("/friends") },
 ];
-const MEMBERS: NavItem = { label: "Members", path: "/org/members", icon: icon(Users), active: (p) => p === "/org/members" || p.startsWith("/users/") };
+const MEMBERS: NavItem = { label: "Members", path: "/org/members", icon: icon(Users), active: (p) => p === "/org/members" || p === "/org/invitations" || p.startsWith("/users/") };
 const ORGANIZATION: NavItem[] = [
-  { label: "Invitations", path: "/org/invitations", icon: icon(Mail), active: exact("/org/invitations") },
   { label: "Workspace Settings", path: "/org/settings", icon: icon(Settings), active: exact("/org/settings") },
 ];
 const ADMIN: NavItem[] = [
@@ -123,7 +122,7 @@ export function Sidebar({ onOpenAccountModal, isMobileOpen, onCloseMobile }: Sid
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium rounded-sm transition-colors cursor-pointer text-left ${
                     item.active(path)
-                      ? `${section.accent} text-white shadow-xs`
+                      ? `${section.accent} text-white`
                       : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-dark-card hover:text-zinc-950 dark:hover:text-white"
                   } ${collapsed ? "justify-center" : ""}`}
                 >

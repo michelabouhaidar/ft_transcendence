@@ -14,10 +14,10 @@ export interface ButtonProps extends ComponentProps<"button"> {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-xs focus-visible:ring-brand-500",
+  primary: "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 focus-visible:ring-brand-500",
   secondary:
     "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300 dark:bg-zinc-800/80 dark:text-zinc-100 dark:hover:bg-zinc-700/80 border border-zinc-200 dark:border-zinc-700/80 focus-visible:ring-zinc-400",
-  destructive: "bg-destructive-600 text-white hover:bg-destructive-700 active:bg-destructive-800 shadow-xs focus-visible:ring-destructive-500",
+  destructive: "bg-destructive-600 text-white hover:bg-destructive-700 active:bg-destructive-800 focus-visible:ring-destructive-500",
   ghost:
     "bg-transparent text-zinc-700 hover:bg-zinc-100 active:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:active:bg-zinc-800 focus-visible:ring-zinc-400",
   outline:
