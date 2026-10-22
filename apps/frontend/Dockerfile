@@ -10,7 +10,8 @@ RUN cd apps/frontend && npm ci
 # Copy source code and configurations
 COPY apps/frontend ./apps/frontend
 WORKDIR /app/apps/frontend
-RUN if [ -d "src" ]; then npm run build; else mkdir -p dist && echo "<h1>Trenno Frontend Initialized</h1>" > dist/index.html; fi
+# Fall back to a placeholder page until the SPA entry point (src/main.tsx) exists
+RUN if [ -f "src/main.tsx" ]; then npm run build; else mkdir -p dist && echo "<h1>Trenno Frontend Initialized</h1>" > dist/index.html; fi
 
 # Stage 2: Serve Frontend SPA via Nginx
 FROM nginx:1.27-alpine

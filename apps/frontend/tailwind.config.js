@@ -95,14 +95,6 @@ export default {
         },
       },
       fontFamily: {
-        display: [
-          '"Plus Jakarta Sans"',
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
-          "Roboto",
-          "sans-serif",
-        ],
         sans: [
           '"Plus Jakarta Sans"',
           "-apple-system",
@@ -122,11 +114,6 @@ export default {
           "monospace",
         ],
       },
-      boxShadow: {
-        "brand-glow": "0 0 20px -3px rgba(37, 99, 235, 0.4)",
-        "card-dark": "0 4px 20px -2px rgba(0, 0, 0, 0.5)",
-      },
     },
   },
-  plugins: [],
 };

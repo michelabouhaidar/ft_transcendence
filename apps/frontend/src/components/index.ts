@@ -13,7 +13,7 @@ export * from "./ErrorPage";
 export * from "./FormDialog";
 export * from "./IconButton";
 export * from "./Input";
-export * from "./LegalModals";
+export * from "./LegalLinks";
 export * from "./Logo";
 export * from "./Menu";
 export * from "./Modal";
