@@ -1,8 +1,3 @@
-# ==============================================================================
-# Trenno (ft_transcendence) — Makefile
-# Single-command Docker Orchestration and VM Volume Management
-# ==============================================================================
-
 ENV_FILE ?= .env
 
 ifneq (,$(wildcard $(ENV_FILE)))
@@ -17,7 +12,8 @@ COMPOSE = docker compose --env-file $(ENV_FILE)
         logs-prometheus logs-grafana logs-node-exporter logs-postgres-exporter top \
         exec-backend exec-frontend exec-db exec-nginx exec-prometheus exec-grafana \
         images containers volumes networks prune \
-        init-dirs clean-data clean fclean check-env help
+        init-dirs clean-data clean fclean check-env help \
+		backup backup-list backup-verify restore backup-export logs-backup
 
 
 all: up
@@ -30,9 +26,11 @@ check-env:
 
 init-dirs: check-env
 	@echo "[Makefile] Ensuring physical volume directories exist on host VM..."
-	@mkdir -p $(DB_DATA_DIR) $(UPLOADS_DATA_DIR) $(CERTS_DATA_DIR) $(PROMETHEUS_DATA_DIR) $(GRAFANA_DATA_DIR)
+	@mkdir -p $(DB_DATA_DIR) $(UPLOADS_DATA_DIR) $(CERTS_DATA_DIR) $(PROMETHEUS_DATA_DIR) $(GRAFANA_DATA_DIR) $(BACKUP_DIR)
 	@chmod 775 $(DB_DATA_DIR) $(UPLOADS_DATA_DIR) $(CERTS_DATA_DIR) 2>/dev/null || true
 	@chmod 777 $(PROMETHEUS_DATA_DIR) $(GRAFANA_DATA_DIR) 2>/dev/null || true
+	@mkdir -p $(BACKUP_DIR)/status
+	@chmod 700 $(BACKUP_DIR) 2>/dev/null || true
 
 
 build: check-env
@@ -177,6 +175,38 @@ fclean: clean
 	$(COMPOSE) down -v --rmi all --remove-orphans
 	$(MAKE) clean-data
 
+backup: check-env
+	@echo "[Makefile] Taking a backup now..."
+	$(COMPOSE) exec -T backup backup.sh
+
+backup-list: check-env
+	@$(COMPOSE) exec -T backup list.sh
+
+backup-verify: check-env
+	$(COMPOSE) exec -T backup verify.sh $(or $(NAME),latest)
+
+restore: check-env
+	@if [ -z "$(NAME)" ]; then \
+		echo "Usage: make restore NAME=<backup name|latest> [WHAT=all|db|uploads|grafana|certs]"; \
+		echo ""; $(COMPOSE) exec -T backup list.sh; exit 1; \
+	fi
+	@echo "[Makefile] Stopping backend and grafana so nothing writes during the restore..."
+	$(COMPOSE) stop backend grafana
+	@$(COMPOSE) exec -T backup restore.sh $(NAME) $(or $(WHAT),all); status=$$?; \
+	echo "[Makefile] Starting backend and grafana again..."; \
+	$(COMPOSE) start backend grafana; \
+	if [ "$(or $(WHAT),all)" = all ] || [ "$(WHAT)" = certs ]; then $(COMPOSE) restart nginx; fi; \
+	exit $$status
+
+backup-export: check-env
+	@if [ -z "$(DEST)" ]; then echo "Usage: make backup-export DEST=/path/on/another/disk"; exit 1; fi
+	@mkdir -p $(DEST)
+	rsync -a --exclude status --exclude .lock --exclude '.tmp_*' $(BACKUP_DIR)/ $(DEST)/
+	@echo "[Makefile] Backups copied to $(DEST)"
+
+logs-backup: check-env
+	$(COMPOSE) logs -f backup
+
 help:
 	@echo "Trenno Docker Management - Available Targets:"
 	@echo ""
@@ -209,6 +239,13 @@ help:
 	@echo "  make volumes      - List Docker volumes"
 	@echo "  make networks     - List Docker networks"
 	@echo "  make prune        - Prune unused Docker images, containers, volumes"
+	@echo ""
+	@echo "Backups & Disaster Recovery:"
+	@echo "  make backup                 - Take a backup now (also runs daily via the backup container)"
+	@echo "  make backup-list            - List backups and the last run status"
+	@echo "  make backup-verify [NAME=]  - Prove a backup restores (scratch DB, live data untouched)"
+	@echo "  make restore NAME= [WHAT=]  - Restore a backup (WHAT=all|db|uploads|grafana|certs)"
+	@echo "  make backup-export DEST=    - Copy all backups to another disk/machine"
 	@echo ""
 	@echo "Teardown:"
 	@echo "  make clean        - Stop containers and remove orphans"
