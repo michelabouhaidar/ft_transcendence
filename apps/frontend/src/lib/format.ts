@@ -1,5 +1,4 @@
 // Shared date and count wording.
-
 export function formatDate(value?: string | null, withTime = false, month: "short" | "long" = "short"): string {
   if (!value) return "Never";
   const d = new Date(value);
