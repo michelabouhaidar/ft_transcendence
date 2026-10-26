@@ -1,7 +1,7 @@
 import type { Presence } from "./users";
 import { http, type ApiError } from "./http";
 
-// Tasks, board and comments (spec §6.8).
+// Tasks, board and comments.
 
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -42,7 +42,7 @@ export interface TaskInput {
 
 export interface Assignee extends TaskPerson {
   role: "OA" | "MEMBER";
-  /** Friends of the viewer come first and carry their online status (USR-06). */
+  // Friends of the viewer come first and carry their online status
   isFriend?: boolean;
   presence?: Presence | null;
 }
@@ -59,7 +59,7 @@ export interface TaskComment {
   canDelete: boolean;
 }
 
-// A 409 carries the task as it is now (§7.2).
+// A 409 carries the task as it is now.
 export type TaskApiError = ApiError & { task?: Task };
 
 const base = (key: string) => `/api/v1/projects/${encodeURIComponent(key)}`;

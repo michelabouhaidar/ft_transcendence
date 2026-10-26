@@ -21,7 +21,7 @@ const STYLES = {
   segmented: {
     list: "inline-flex items-center p-1 bg-zinc-100 dark:bg-dark-card border border-zinc-200/80 dark:border-zinc-800/80 rounded-none",
     tab: "rounded-none",
-    active: "bg-brand-600 text-white shadow-xs",
+    active: "bg-brand-600 text-white",
     idle: "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white",
     countActive: "bg-white/20 text-white",
     countIdle: "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400",

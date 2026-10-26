@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode } from "react";
+import { SubmitEvent, ReactNode } from "react";
 import { Modal, ModalProps } from "./Modal";
 import { Alert } from "./Alert";
 import { Button } from "./Button";
@@ -18,7 +18,7 @@ interface FormDialogProps extends Omit<ModalProps, "children"> {
 
 // A dialog with a form: dismissible error on top, Cancel / submit at the bottom.
 export function FormDialog({ onSubmit, submitLabel, busy, submitDisabled, error, onDismissError, footerNote, className = "space-y-4", children, ...modal }: FormDialogProps) {
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSubmit();
   };
