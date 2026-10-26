@@ -181,6 +181,7 @@ export function LandingPage() {
               </p>
             </div>
           </div>
+
         </section>
 
         {/* Features */}
