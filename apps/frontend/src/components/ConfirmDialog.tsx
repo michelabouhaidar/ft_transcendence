@@ -23,8 +23,7 @@ export interface ConfirmDialogProps {
   children?: ReactNode;
 }
 
-const variantConfig: Record<
-  ConfirmDialogVariant,
+const variantConfig: Record<  ConfirmDialogVariant,
   {
     icon: typeof AlertTriangle;
     iconBg: string;

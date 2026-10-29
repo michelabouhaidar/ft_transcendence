@@ -35,7 +35,7 @@ export function ThemeToggle({ variant = "switch", className = "" }: { variant?: 
       title={mode === "light" ? "Light mode" : "Dark mode"}
       className={`flex items-center justify-center p-0.5 rounded-none transition-all duration-200 cursor-pointer ${
         !active
-          ? "text-zinc-400 hover:text-white"
+          ? "text-zinc-400 hover:text-zinc-700 dark:hover:text-white"
           : mode === "light"
           ? "text-warning-400 drop-shadow-[0_0_6px_theme(colors.warning.400/70%)] scale-105"
           : "text-brand-400 drop-shadow-[0_0_6px_theme(colors.brand.400/70%)] scale-105"

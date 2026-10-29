@@ -2,7 +2,7 @@ import { ComponentProps } from "react";
 
 export interface CardProps extends ComponentProps<"div"> {
   variant?: "default" | "elevated" | "interactive";
-  /** Inner spacing. Use this instead of padding classes, which can't override the default. */
+  // Inner spacing. Use this instead of padding classes, which can't override the default. 
   padding?: "none" | "sm" | "md" | "lg";
 }
 

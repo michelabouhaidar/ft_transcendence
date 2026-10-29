@@ -1,12 +1,11 @@
 import { ComponentProps, ReactNode } from "react";
 
 export interface IconButtonProps extends Omit<ComponentProps<"button">, "aria-label" | "title"> {
-  /** Accessible name; also shown as the tooltip. */
   label: string;
   icon: ReactNode;
   tone?: "neutral" | "danger";
   size?: "sm" | "md";
-  /** When set, the button is disabled and this reason becomes its tooltip and accessible description. */
+  // When set, the button is disabled and the reason is why it can’t be used right now
   disabledReason?: string | null;
 }
 
