@@ -124,7 +124,7 @@ export function LandingPage() {
                   title="Open Workspace"
                   className="flex items-center gap-2.5 p-1 rounded-none hover:bg-zinc-100 dark:hover:bg-dark-card border border-transparent hover:border-zinc-200 dark:hover:border-dark-border transition-all cursor-pointer group focus:outline-none"
                 >
-                  <Avatar size="sm" name={`${user.firstName} ${user.lastName}`} src={user.avatarPath || undefined} />
+                  <Avatar size="sm" name={`${user.firstName} ${user.lastName}`} colorSeed={user.id} src={user.avatarPath || undefined} />
                   <span className="hidden md:inline text-xs font-semibold text-zinc-900 dark:text-white font-sans group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                     {user.firstName} {user.lastName}
                   </span>

@@ -8,7 +8,7 @@ export interface AvatarProps extends ComponentProps<"div"> {
   name?: string;
   size?: AvatarSize;
   status?: "online" | "offline";
-  /** User id: picks the color of the default (initials) avatar so it stays the same everywhere. */
+  // User id: picks the color of the default (initials) avatar so it stays the same everywhere.
   colorSeed?: string;
 }
 
