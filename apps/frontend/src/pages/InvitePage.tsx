@@ -170,7 +170,7 @@ export function InvitePage({ token }: { token: string }) {
   );
 }
 
-// INV-03: existing account, signed in.
+// Existing account, signed in.
 function SignedInActions({
   invitation,
   userEmail,
@@ -265,7 +265,7 @@ function SignedInActions({
   );
 }
 
-// INV-02: new person. The link proves the email, so it's shown read-only.
+// New person. The link proves the email, so it's shown read-only.
 export function NewAccountForm({
   email,
   submit,

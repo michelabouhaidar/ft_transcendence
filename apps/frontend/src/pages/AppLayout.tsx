@@ -88,7 +88,7 @@ export function AppLayout({ variant = "workspace", trail, children }: AppLayoutP
   );
 }
 
-// SRCH-01: the header box opens the search page with the text.
+// The header box opens the search page with the text.
 function HeaderSearch() {
   const { navigate } = useApp();
   const [query, setQuery] = useState("");

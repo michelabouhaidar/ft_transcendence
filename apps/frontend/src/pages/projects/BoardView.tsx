@@ -52,8 +52,8 @@ interface BoardViewProps extends BoardPeople {
   onCreateIn: (status: TaskStatus) => void;
 }
 
-// TSK-05 / TSK-06: three columns with counts, drag and drop (within and between columns) and a
-// "Move to…" menu on every card. Viewers get neither.
+// Three columns with counts, drag and drop (within and between columns) and a "Move to…" menu on every card. 
+// Viewers get neither.
 export function BoardView({ tasks, visible, canEdit, onOpen, onMove, onCreateIn, people, currentUserId, onAssign }: BoardViewProps) {
   const [columns, setColumns] = useState<Columns>(() => toColumns(tasks));
   const [dragging, setDragging] = useState<Task | null>(null);
@@ -151,7 +151,7 @@ export function BoardView({ tasks, visible, canEdit, onOpen, onMove, onCreateIn,
         },
       }}
     >
-      {/* Horizontal scroll on small screens (TSK-05). */}
+      {/* Horizontal scroll on small screens. */}
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
         <div className="grid grid-cols-[repeat(3,minmax(17rem,1fr))] gap-4 min-w-max sm:min-w-0">
           {STATUSES.map((status) => (

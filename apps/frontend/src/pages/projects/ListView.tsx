@@ -39,7 +39,7 @@ function compare(a: Task, b: Task, key: SortKey): number {
 }
 const isEmpty = (t: Task, key: SortKey) => (key === "dueDate" && !t.dueDate) || (key === "assignee" && !t.assignee);
 
-// TSK-08: sortable table of the project's tasks.
+// Sortable table of the project's tasks.
 export function ListView({
   tasks,
   onOpen,

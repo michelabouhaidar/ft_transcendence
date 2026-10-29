@@ -10,7 +10,7 @@ import { timeAgo } from "../lib/format";
 const PAGE_SIZE = 20;
 type Filter = "all" | "unread";
 
-// /notifications (NOTIF-03): All / Unread, 20 per page, mark read, mark all read, delete (soft).
+// /notifications: All / Unread, 20 per page, mark read, mark all read, delete (soft).
 // Rendered inside the workspace shell, or the admin shell for a System Admin.
 export function NotificationsInbox() {
   const { user } = useAuth();
