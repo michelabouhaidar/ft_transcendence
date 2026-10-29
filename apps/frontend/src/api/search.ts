@@ -32,6 +32,7 @@ export interface SearchResult {
   };
 }
 
+// This is the starting point.
 export const EMPTY_SEARCH: SearchParams = {
   q: "",
   project: "",
