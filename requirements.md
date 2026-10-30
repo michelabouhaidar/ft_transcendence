@@ -81,7 +81,7 @@ Rules:
 
 ## 5. Scope
 
-**In:** sign-up with email verification, login, lockout, logout, password reset and change, TOTP 2FA · invitations by email · profiles, avatars, friends, presence · admin panel · orgs, members, roles · projects with access list · tasks, Kanban, list view, comments, live updates · notifications (in-app + security emails) · search · custom design system & component showcase · real-time WebSockets · Prometheus and Grafana monitoring · legal pages · soft delete · HTTPS · Docker · Mailpit.
+**In:** sign-up with email verification, login, lockout, logout, password reset and change, TOTP 2FA · invitations by email · profiles, avatars, friends, presence · admin panel · orgs, members, roles · projects with access list · tasks, Kanban, list view, comments, live updates · notifications (in-app + security emails) · search · custom design system & component showcase · real-time WebSockets · Prometheus and Grafana monitoring · legal pages · soft delete · HTTPS · Docker · email over SMTP.
 
 **Out:** analytics dashboard, data import/export, archive/restore, Project Owner, membership suspension, task links, task history, audit log, session list, OAuth, chat, file attachments, PWA, SSR.
 
@@ -348,7 +348,7 @@ Rules:
 | **NFR-10** | Validation front **and** back (p. 9) | Shared Zod schemas enforcing input constraints on frontend and backend (§7.6). |
 | **NFR-11** | HTTPS for every connection to the backend (p. 9) | nginx TLS termination on port 8443, WSS. Only nginx exposes host ports exclusively over HTTPS. |
 | **NFR-12** | Git: all members, clear commits (p. 8) | Structured feature branches, pull requests, clear commit messages across team members. |
-| **NFR-13** | Offline evaluation | Fonts, icons, and client libraries bundled locally; Mailpit container replaces external SMTP service. |
+| **NFR-13** | Offline evaluation | Fonts, icons, and client libraries bundled locally. Outgoing email uses the SMTP server set in `.env`. |
 
 ---
 
