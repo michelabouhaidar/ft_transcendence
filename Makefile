@@ -25,10 +25,9 @@ check-env:
 	fi
 
 init-dirs: check-env
-	@echo "[Makefile] Ensuring physical volume directories exist on host VM..."
-	@mkdir -p $(DB_DATA_DIR) $(UPLOADS_DATA_DIR) $(CERTS_DATA_DIR) $(PROMETHEUS_DATA_DIR) $(GRAFANA_DATA_DIR) $(BACKUP_DIR)
-	@chmod 775 $(DB_DATA_DIR) $(UPLOADS_DATA_DIR) $(CERTS_DATA_DIR) 2>/dev/null || true
-	@chmod 777 $(PROMETHEUS_DATA_DIR) $(GRAFANA_DATA_DIR) 2>/dev/null || true
+	@echo "[Makefile] Ensuring backup directory exists on host VM..."
+	@# DB / uploads / certs / prometheus / grafana data now live in Docker named
+	@# volumes (see docker-compose.yml); only the backup dir stays a host bind mount.
 	@mkdir -p $(BACKUP_DIR)/status
 	@chmod 700 $(BACKUP_DIR) 2>/dev/null || true
 
@@ -166,9 +165,11 @@ clean: check-env
 	@echo "[Makefile] Stopping containers and removing orphans..."
 	$(COMPOSE) down --remove-orphans
 
-clean-data:
-	@echo "[Makefile] Cleaning physical volume data on host VM..."
-	@rm -rf $(DB_DATA_DIR)/* $(UPLOADS_DATA_DIR)/* $(CERTS_DATA_DIR)/* $(PROMETHEUS_DATA_DIR)/* $(GRAFANA_DATA_DIR)/* 2>/dev/null || true
+clean-data: check-env
+	@echo "[Makefile] Removing data volumes (db, uploads, certs, prometheus, grafana)..."
+	@# Data lives in Docker named volumes now; down -v removes them while keeping images.
+	@# Backups (host bind mount at $(BACKUP_DIR)) are left untouched.
+	$(COMPOSE) down -v --remove-orphans
 
 fclean: clean
 	@echo "[Makefile] Full teardown: removing images, volumes, and physical data..."
