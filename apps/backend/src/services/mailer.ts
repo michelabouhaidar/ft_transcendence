@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
-const smtpHost = process.env.SMTP_HOST || "mailpit";
-const smtpPort = Number(process.env.SMTP_PORT || (smtpHost === "mailpit" ? 1025 : 587));
+const smtpHost = process.env.SMTP_HOST;
+const smtpPort = Number(process.env.SMTP_PORT || 587);
 const smtpUser = process.env.SMTP_USER?.trim();
 const smtpPass = process.env.SMTP_PASS?.replace(/\s+/g, "");
 
@@ -13,23 +13,15 @@ const smtpFrom = rawSmtpFrom;
 const smtpSecure = process.env.SMTP_SECURE === "true" || smtpPort === 465;
 const appUrl = process.env.APP_URL || "https://localhost:8443";
 
+if (!smtpHost) {
+  console.warn("[Mailer] SMTP_HOST is not set; emails will fail until SMTP_* is configured.");
+}
+
 export const transporter = nodemailer.createTransport({
   host: smtpHost,
   port: smtpPort,
   secure: smtpSecure,
   auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
-
-const mailpitTransporter = nodemailer.createTransport({
-  host: "mailpit",
-  port: 1025,
-  secure: false,
-  tls: {
-    rejectUnauthorized: false,
-  },
 });
 
 export interface SendMailOptions {
@@ -39,100 +31,13 @@ export interface SendMailOptions {
   html: string;
 }
 
-/**
- * Unified email sender:
- * 1. If RESEND_API_KEY is provided, dispatches directly via Resend HTTPS API.
- *    - If Resend succeeds, email is delivered online.
- *    - If Resend rejects recipient (e.g. sandbox restriction where onboarding@resend.dev can only
- *      email the account owner, or unverified domain), falls back to Mailpit so the user/flow is never blocked.
- * 2. Otherwise, dispatches via SMTP (e.g. Gmail / Brevo for universal online delivery, or Mailpit).
- */
+// Sends one email through the configured SMTP server. Errors are thrown to the caller.
 export async function sendEmail({ to, subject, text, html }: SendMailOptions): Promise<void> {
-  const resendApiKey = process.env.RESEND_API_KEY;
-
-  if (resendApiKey && resendApiKey.trim() !== "") {
-    let fromAddress = (process.env.RESEND_FROM || "Trenno <onboarding@resend.dev>").trim();
-    if (
-      (fromAddress.startsWith('"') && fromAddress.endsWith('"')) ||
-      (fromAddress.startsWith("'") && fromAddress.endsWith("'"))
-    ) {
-      fromAddress = fromAddress.slice(1, -1).trim();
-    }
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendApiKey.trim()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: fromAddress,
-          to: [to],
-          subject,
-          text,
-          html,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorBody: any = await res.json().catch(() => ({}));
-        console.warn(`[Mailer] Resend API rejected message to ${to} (HTTP ${res.status}): ${errorBody?.message || "Unknown error"}`);
-
-        // If in test sandbox mode, explain domain verification and fall back to local Mailpit
-        console.info(`[Mailer] Delivering to local Mailpit inbox for ${to} as safety fallback.`);
-        await mailpitTransporter.sendMail({
-          from: smtpFrom,
-          to,
-          subject,
-          text,
-          html,
-        });
-        console.log(`[Mailer] Safely delivered to Mailpit (view at https://localhost:8443/mail/)`);
-        return;
-      }
-
-      const resData: any = await res.json().catch(() => ({}));
-      console.log(`[Mailer] Successfully dispatched email via Resend to ${to} (ID: ${resData?.id || "ok"})`);
-      return;
-    } catch (err) {
-      console.error("[Mailer] Resend network error, falling back to Mailpit:", err);
-      await mailpitTransporter.sendMail({
-        from: smtpFrom,
-        to,
-        subject,
-        text,
-        html,
-      });
-      console.log(`[Mailer] Safely delivered to Mailpit for ${to}`);
-      return;
-    }
+  if (!smtpHost) {
+    throw new Error("SMTP_HOST is not configured");
   }
-
-  // Fallback to configured SMTP transporter (Gmail / Brevo / Mailpit)
-  try {
-    await transporter.sendMail({
-      from: smtpFrom,
-      to,
-      subject,
-      text,
-      html,
-    });
-    console.log(`[Mailer] Successfully dispatched email via SMTP (${smtpHost}) to ${to}`);
-  } catch (smtpErr) {
-    if (smtpHost !== "mailpit") {
-      console.warn(`[Mailer] Primary SMTP (${smtpHost}) failed, falling back to local Mailpit:`, smtpErr);
-      await mailpitTransporter.sendMail({
-        from: '"Trenno" <no-reply@trenno.local>',
-        to,
-        subject,
-        text,
-        html,
-      });
-      console.log(`[Mailer] Safely delivered to Mailpit for ${to}`);
-    } else {
-      throw smtpErr;
-    }
-  }
+  await transporter.sendMail({ from: smtpFrom, to, subject, text, html });
+  console.log(`[Mailer] Sent email via SMTP (${smtpHost}) to ${to}`);
 }
 
 export async function sendVerificationEmail(to: string, rawToken: string, firstName: string): Promise<void> {

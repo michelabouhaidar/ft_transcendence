@@ -37,6 +37,12 @@ services:
       SEED_SA_EMAIL: ${SEED_SA_EMAIL}
       SEED_SA_PASSWORD: ${SEED_SA_PASSWORD}
       BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_SECURE: ${SMTP_SECURE}
     volumes:
       - ${UPLOADS_DATA_DIR}:/app/uploads
       - ${BACKUP_DIR}/status:/backup-status:ro
