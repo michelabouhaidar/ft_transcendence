@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 import { readFile } from "fs/promises";
+import { metricsMiddleware, register } from "./services/metrics";
 
 export const prisma = new PrismaClient();
 
@@ -45,6 +46,21 @@ export function createApp(): express.Express {
   // Basic middleware
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
+
+  // Prometheus request latency & count tracking middleware
+  app.use(metricsMiddleware);
+
+  // Prometheus metrics scraping endpoint. nginx does not proxy /metrics, so only
+  // Prometheus reaches it, over the internal Docker network (backend:3000).
+  app.get("/metrics", async (_req: Request, res: Response) => {
+    try {
+      res.set("Content-Type", register.contentType);
+      res.end(await register.metrics());
+    } catch (err) {
+      console.error("[Metrics] Could not collect metrics:", err);
+      res.status(500).end();
+    }
+  });
 
   // CORS configuration: the only origin is the HTTPS front door (nginx on 8443)
   const allowedOrigin = process.env.APP_URL || "https://localhost:8443";
