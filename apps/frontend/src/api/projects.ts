@@ -1,7 +1,7 @@
 import { http, query, type ApiError } from "./http";
 import type { OrgRole } from "./auth";
 
-// Projects and project access (spec §6.7). A System Admin passes the org they act on.
+// Projects and project access.
 
 export interface Project {
   id: string;

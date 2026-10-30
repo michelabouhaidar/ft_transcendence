@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { ChangeEvent, SubmitEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { Building2, Camera, Check, Copy, Download, KeyRound, Lock, ShieldAlert, ShieldCheck, Trash2, Unlock, User as UserIcon } from "lucide-react";
 import { authApi, User } from "../api/auth";
 import { usersApi } from "../api/users";
@@ -130,7 +130,7 @@ function Footer({ children, justify = "end" }: { children: ReactNode; justify?: 
   return <div className={`flex gap-3 items-center pt-3 border-t border-zinc-200 dark:border-dark-border ${justify === "end" ? "justify-end" : "justify-between"}`}>{children}</div>;
 }
 
-const submitted = (fn: () => void) => (e: FormEvent) => {
+const submitted = (fn: () => void) => (e: SubmitEvent<HTMLFormElement>) => {
   e.preventDefault();
   fn();
 };

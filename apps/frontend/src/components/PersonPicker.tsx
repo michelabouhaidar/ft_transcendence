@@ -15,7 +15,7 @@ export interface PersonPickerPerson {
 }
 
 export interface PersonPickerProps {
-  /** Accessible name of the trigger, e.g. "Assignee of WEB-12". */
+  /** Accessible name of the trigger, e.g. "Assignee of TRSD-12". */
   label: string;
   people: PersonPickerPerson[];
   /** Selected person id; null = nobody. */

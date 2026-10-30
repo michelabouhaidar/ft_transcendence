@@ -2,17 +2,17 @@ import { ComponentProps } from "react";
 
 export interface CardProps extends ComponentProps<"div"> {
   variant?: "default" | "elevated" | "interactive";
-  /** Inner spacing. Use this instead of padding classes, which can't override the default. */
+  // Inner spacing. Use this instead of padding classes, which can't override the default. 
   padding?: "none" | "sm" | "md" | "lg";
 }
 
 const PADDING = { none: "", sm: "p-3", md: "p-5 sm:p-6", lg: "p-8" };
 
 const VARIANTS = {
-  default: "bg-white dark:bg-dark-card border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs transition-colors",
-  elevated: "bg-white dark:bg-dark-elevated border border-zinc-200/70 dark:border-zinc-800/80 shadow-md transition-colors",
+  default: "bg-white dark:bg-dark-card border border-zinc-200/80 dark:border-zinc-800/80 transition-all duration-150",
+  elevated: "bg-white dark:bg-dark-elevated border border-zinc-200/70 dark:border-zinc-800/80 shadow-md transition-all duration-150",
   interactive:
-    "bg-white dark:bg-dark-card border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs hover:border-zinc-400 dark:hover:border-zinc-600 transition-all duration-150 cursor-pointer",
+    "bg-white dark:bg-dark-card border border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all duration-150 cursor-pointer",
 };
 
 export function Card({ variant = "default", padding = "md", className = "", ...props }: CardProps) {

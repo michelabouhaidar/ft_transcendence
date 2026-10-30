@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { SubmitEvent, ReactNode, useEffect, useState } from "react";
 import { AlertCircle, ArrowLeft, ArrowRight, Clock, Lock, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
 import { authApi, LoginResponse } from "../api/auth";
 import type { ApiError } from "../api/http";
@@ -8,7 +8,7 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { PasswordChecklist, PasswordMatchIndicator } from "./PasswordChecklist";
-import { TermsCheckbox, useLegalModals } from "./LegalModals";
+import { LegalLink, TermsCheckbox } from "./LegalLinks";
 import { Spinner } from "./Spinner";
 
 export type AuthPopupView = "login" | "signup" | "verify" | "forgot-password" | "reset-password";
@@ -60,7 +60,7 @@ function useAuthForm() {
   const [error, setError] = useState<{ code: string | null; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const fail = (code: string | null, message: string) => setError({ code, message });
-  const submit = (action: () => Promise<unknown>, fallback: string, fallbackCode: string | null = null) => async (e: FormEvent) => {
+  const submit = (action: () => Promise<unknown>, fallback: string, fallbackCode: string | null = null) => async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setBusy(true);
@@ -387,8 +387,8 @@ function SignupView({ onClose, onSwitchView }: ViewProps) {
       )}
       <form onSubmit={signup} className="space-y-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="First Name" required placeholder="Alex" {...text("firstName")} />
-          <Input label="Last Name" required placeholder="Rivera" {...text("lastName")} />
+          <Input label="First Name" required placeholder="Walid" {...text("firstName")} />
+          <Input label="Last Name" required placeholder="Mougharbel" {...text("lastName")} />
         </div>
         <Input label="Email address" type="email" required placeholder="name@company.com" {...text("email")} />
         <PasswordPair password={password} confirm={confirm} setPassword={setPassword} setConfirm={setConfirm} labels={["Password", "Confirm Password"]} />
@@ -416,7 +416,6 @@ function VerifyView({ onClose, onSwitchView }: ViewProps) {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState<string | null>(null);
-  const legal = useLegalModals();
 
   useEffect(() => {
     const t = token();
@@ -462,18 +461,13 @@ function VerifyView({ onClose, onSwitchView }: ViewProps) {
               <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
               <span>Workspace Security & Legal Terms</span>
             </div>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal font-sans">Your workspace account adheres to encrypted data protection and service terms:</p>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal font-sans">How Trenno handles your account and data:</p>
             <div className="flex items-center gap-3 pt-0.5 text-[11px]">
-              <Button variant="link" size="sm" className="underline" onClick={legal.openTerms}>
-                Terms of Service
-              </Button>
+              <LegalLink to="terms" newTab className="font-medium text-brand-600 dark:text-brand-400 underline" />
               <span className="text-zinc-300 dark:text-zinc-700">&middot;</span>
-              <Button variant="link" size="sm" className="underline" onClick={legal.openPrivacy}>
-                Privacy Policy
-              </Button>
+              <LegalLink to="privacy" newTab className="font-medium text-brand-600 dark:text-brand-400 underline" />
             </div>
           </div>
-          {legal.modals}
         </>
       )}
 

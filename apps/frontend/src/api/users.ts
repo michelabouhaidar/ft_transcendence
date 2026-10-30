@@ -8,7 +8,7 @@ export interface Presence {
   lastSeenAt: string | null;
 }
 
-// USR-06: pushed to friends when someone comes online or goes offline (after a 10 s grace period).
+// Pushed to friends when someone comes online or goes offline (after a 10 s grace period).
 export interface PresenceUpdate extends Presence {
   userId: string;
 }
@@ -34,9 +34,8 @@ export interface UserProfileResponse {
   friendship: { state: FriendshipState; id: string | null };
   presence: Presence | null;
   canRequestFriend: boolean;
-  /** When the two became friends (friends only). */
   friendsSince?: string | null;
-  /** Work and friends in the viewer's organization; null for people outside it. */
+  // Their tasks and projects, only if they’re in your organization.
   work?: ProfileWork | null;
 }
 
@@ -62,6 +61,7 @@ export interface ProfileWork {
   mutualFriends: Array<{ id: string; name: string; avatarPath: string | null }>;
 }
 
+// This is one row in the list of everyone in your organization.
 export interface DirectoryMember {
   userId: string;
   firstName: string;
@@ -70,10 +70,10 @@ export interface DirectoryMember {
   avatarPath: string | null;
   role: "OA" | "MEMBER" | "VIEWER";
   friendship: { state: FriendshipState; id: string | null };
-  /** Friends only (USR-06). */
   presence?: Presence | null;
 }
 
+//Used to stop removing the last admin.
 export interface DirectoryResponse {
   members: DirectoryMember[];
   total: number;
