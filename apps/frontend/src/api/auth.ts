@@ -51,6 +51,7 @@ type Message = { success?: boolean; message: string };
 type NewAccount = { firstName: string; lastName: string; password: string; passwordConfirmation: string; acceptTerms: boolean };
 
 export const authApi = {
+  //Signing in and accounts
   getMe: () => http.get<AuthMeResponse>("/api/v1/auth/me"),
   signup: (payload: NewAccount & { email: string; acceptTerms: true }) => http.post<Message>("/api/v1/auth/signup", payload),
   verifyEmail: (token: string) => http.post<Message>("/api/v1/auth/verify", { token }),
@@ -62,7 +63,7 @@ export const authApi = {
   resetPassword: (payload: { token: string; password: string; passwordConfirmation: string }) => http.post<Message>("/api/v1/auth/password/reset", payload),
   verifyResetToken: (token: string) => http.get<{ valid: boolean; email?: string }>(`/api/v1/auth/password/reset/verify${query({ token })}`),
 
-  // ---------- Profile, password, 2FA ----------
+  // Profile and security (password, 2FA)
   updateProfile: (payload: { firstName?: string; lastName?: string; jobTitle?: string | null; bio?: string | null }) =>
     http.patch<Message & { user: User }>("/api/v1/auth/profile", payload),
   changePassword: (payload: { currentPassword: string; newPassword: string }) => http.post<Message>("/api/v1/auth/password/change", payload),
@@ -71,7 +72,7 @@ export const authApi = {
   enable2fa: (payload: { code: string }) => http.post<{ success: boolean; recoveryCodes: string[] }>("/api/v1/auth/2fa/enable", payload),
   disable2fa: (payload: { password: string; code: string }) => http.post<Message>("/api/v1/auth/2fa/disable", payload),
 
-  // ---------- Organizations and invitations (spec §6.3) ----------
+  // Organizations and invitations
   getInvitations: () => http.get<{ invitations: Invitation[] }>("/api/v1/me/invitations"),
   acceptInvitation: (id: string) => http.post<Message & { organization: Organization; role: OrgRole }>(`/api/v1/invitations/${id}/accept`),
   declineInvitation: (id: string) => http.post<Message>(`/api/v1/invitations/${id}/decline`),
@@ -87,7 +88,7 @@ export const authApi = {
   acceptInvitationAsNew: (token: string, payload: NewAccount) =>
     http.post<Message & { user: User; organization: Organization; role: OrgRole }>(`/api/v1/invitations/by-token/${encodeURIComponent(token)}/accept`, payload),
 
-  // ---------- System Admin invitation (ADM-02) ----------
+  // System Admin invitation
   getSaInvitationByToken: (token: string) =>
     http.get<{ invitation: { email: string; expiresAt: string; invitedByName: string }; accountExists: boolean }>(
       `/api/v1/invitations/sa/by-token/${encodeURIComponent(token)}`
@@ -95,7 +96,7 @@ export const authApi = {
   acceptSaInvitation: (token: string, payload: NewAccount) =>
     http.post<Message & { user: User; organization: null; role: "SA" }>(`/api/v1/invitations/sa/by-token/${encodeURIComponent(token)}/accept`, payload),
 
-  // ---------- Administration (spec §6.5) ----------
+  // Administration
   adminGetUsers: (params: { page?: number; limit?: number; q?: string; status?: string; orgId?: string; role?: string; sort?: AdminUserSort; order?: "asc" | "desc" } = {}) =>
     http.get<AdminUsersResponse>(`/api/v1/admin/users${query(params)}`),
   adminGetUser: (id: string) => http.get<{ user: AdminUserDetail }>(`/api/v1/admin/users/${id}`),
@@ -115,7 +116,7 @@ export const authApi = {
     http.patch<Message & { organization: Organization }>(`/api/v1/admin/orgs/${id}`, payload),
   adminDeleteOrg: (id: string, confirmName: string) => http.del<Message>(`/api/v1/admin/orgs/${id}`, { confirmName }),
 
-  // ---------- Organization management for Org Admins (ORG-03…07) ----------
+  // Organization management for Org Admins
   getOrg: (id: string) => http.get<{ organization: Organization & { memberCount: number; projectCount: number } }>(`/api/v1/orgs/${id}`),
   updateOrg: (id: string, payload: { name: string; description?: string }) => http.patch<Message & { organization: Organization }>(`/api/v1/orgs/${id}`, payload),
   deleteOrg: (id: string, confirmName: string) => http.del<Message>(`/api/v1/orgs/${id}`, { confirmName }),
@@ -146,7 +147,7 @@ export interface AdminUserListItem {
   organization: { id: string; name: string } | null;
   orgRole: OrgRole | null;
   role: "SA" | OrgRole | "U";
-  /** Actions the backend would refuse (§4.1 last-SA / last-OA rules). */
+  // Actions the backend would refuse
   guards: {
     isSelf: boolean;
     lastSa: boolean;

@@ -2,9 +2,9 @@ import { ComponentProps, ReactNode, useId } from "react";
 
 export interface CheckboxProps extends Omit<ComponentProps<"input">, "type"> {
   label: ReactNode;
-  /** Secondary line under the label (e.g. what the option does, or why it's disabled). */
+  // Secondary line under the label (what the option does, or why it's disabled).
   description?: ReactNode;
-  /** "card" wraps the control in a bordered, clickable box. */
+  // "card" wraps the control in a bordered, clickable box.
   variant?: "plain" | "card";
 }
 

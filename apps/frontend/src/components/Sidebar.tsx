@@ -144,7 +144,7 @@ export function Sidebar({ onOpenAccountModal, isMobileOpen, onCloseMobile }: Sid
               collapsed ? "justify-center" : "flex-1"
             }`}
           >
-            <Avatar size="sm" name={user ? `${user.firstName} ${user.lastName}` : "User"} src={user?.avatarPath || undefined} />
+            <Avatar size="sm" colorSeed={user?.id} name={user ? `${user.firstName} ${user.lastName}` : "User"} src={user?.avatarPath || undefined} />
             {!collapsed && (
               <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200 truncate group-hover:text-zinc-950 dark:group-hover:text-white transition-colors">
                 {user?.firstName} {user?.lastName}

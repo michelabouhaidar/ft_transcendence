@@ -33,14 +33,14 @@ export function Modal({ isOpen, onClose, title, description, children, maxWidth 
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs transition-opacity animate-in fade-in duration-200" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-zinc-950/70 transition-opacity duration-200" onClick={onClose} aria-hidden="true" />
       <div className="flex min-h-full items-center justify-center p-3 sm:p-6 text-center">
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-title"
           aria-describedby={description ? "modal-description" : undefined}
-          className={`relative w-full ${WIDTHS[maxWidth]} max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3rem)] flex flex-col bg-white dark:bg-dark-card rounded-none border border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl z-10 text-left transform transition-all animate-in zoom-in-95 duration-150`}
+          className={`relative w-full ${WIDTHS[maxWidth]} max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3rem)] flex flex-col bg-white dark:bg-dark-card rounded-none border border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl z-10 text-left transform transition-all zoom-in-95 duration-150`}
         >
           <div className="p-5 sm:p-6 pb-4 border-b border-zinc-100 dark:border-zinc-800/60 flex items-start justify-between shrink-0 bg-white dark:bg-dark-card z-10">
             <div className="min-w-0">

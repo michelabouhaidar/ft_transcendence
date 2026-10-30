@@ -2,8 +2,7 @@ import type { Presence } from "./users";
 import { http } from "./http";
 import { Task, TaskPriority, TaskStatus } from "./tasks";
 
-// Task search (spec §6.10).
-
+// Task search
 export type SearchSort = "updated" | "created" | "due" | "priority" | "title";
 
 export interface SearchParams {
@@ -11,7 +10,7 @@ export interface SearchParams {
   project: string;
   status: TaskStatus | "";
   priority: TaskPriority | "";
-  /** "me", "unassigned", "friends" or a user id. */
+  // "me", "unassigned", "friends" or a user id.
   assignee: string;
   dueFrom: string;
   dueTo: string;
@@ -33,6 +32,7 @@ export interface SearchResult {
   };
 }
 
+// This is the starting point.
 export const EMPTY_SEARCH: SearchParams = {
   q: "",
   project: "",
@@ -46,7 +46,7 @@ export const EMPTY_SEARCH: SearchParams = {
   page: 1,
 };
 
-// URL <-> params (SRCH-04): only non-default values go in the query string.
+// URL <-> params: only non-default values go in the query string.
 export function toQueryString(p: SearchParams): string {
   const qs = new URLSearchParams();
   (Object.keys(EMPTY_SEARCH) as Array<keyof SearchParams>).forEach((k) => {

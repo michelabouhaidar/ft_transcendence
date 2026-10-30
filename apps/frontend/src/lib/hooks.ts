@@ -1,7 +1,7 @@
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
 
-// Runs an async action with a busy flag and an error message. `run` resolves to the action's
-// result, or undefined when it threw (the message is then in `error`).
+// Runs an async action with a busy flag and an error message. 
+// 'run' resolves to the action's result, or undefined when it threw (the message is then in 'error').
 export function useAsync() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function useAsync() {
   return { busy, error, setError, run };
 }
 
-// Calls `onOutside` on a mousedown outside every given element, while `enabled`.
+// Detects clicks outside an element, while enabled.
 export function useClickOutside(refs: Array<RefObject<HTMLElement | null>>, onOutside: () => void, enabled = true) {
   const handler = useRef(onOutside);
   handler.current = onOutside;
@@ -31,11 +31,10 @@ export function useClickOutside(refs: Array<RefObject<HTMLElement | null>>, onOu
     };
     document.addEventListener("mousedown", listener);
     return () => document.removeEventListener("mousedown", listener);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 }
 
-// The value, once it stopped changing for `ms`.
+// The value, once it stopped changing for ms.
 export function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
