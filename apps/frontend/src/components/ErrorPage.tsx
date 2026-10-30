@@ -31,7 +31,7 @@ export function ErrorPage({ code, title, message, home }: ErrorPageProps) {
         </CardHeader>
         <CardContent className="pt-2 text-center">
           <div className="p-3 bg-zinc-100 dark:bg-dark-card border border-zinc-200/80 dark:border-dark-border text-xs font-sans font-medium text-zinc-600 dark:text-zinc-400">
-            HTTP Status: {code} &bull; Access Restricted
+            HTTP Status: {code} &bull; { is403 ? "Access Restricted" : "Not found" }
           </div>
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row gap-2 pt-4">
