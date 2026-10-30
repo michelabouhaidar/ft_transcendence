@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ${DB_DATA_DIR}:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_HOST_PORT}:${POSTGRES_PORT}"
     networks:
@@ -44,7 +44,7 @@ services:
       SMTP_FROM: ${SMTP_FROM}
       SMTP_SECURE: ${SMTP_SECURE}
     volumes:
-      - ${UPLOADS_DATA_DIR}:/app/uploads
+      - uploads-data:/app/uploads
       - ${BACKUP_DIR}/status:/backup-status:ro
     networks:
       - app-network
@@ -87,7 +87,7 @@ services:
       - "--web.enable-lifecycle"
       - "--web.external-url=${PROMETHEUS_EXTERNAL_URL}"
     volumes:
-      - ${PROMETHEUS_DATA_DIR}:/prometheus
+      - prometheus-data:/prometheus
     networks:
       - app-network
     depends_on:
@@ -114,7 +114,7 @@ services:
       GF_SERVER_ROOT_URL: ${GRAFANA_SERVER_ROOT_URL}
       GF_SERVER_SERVE_FROM_SUB_PATH: ${GRAFANA_SERVER_SERVE_FROM_SUB_PATH}
     volumes:
-      - ${GRAFANA_DATA_DIR}:/var/lib/grafana
+      - grafana-data:/var/lib/grafana
     networks:
       - app-network
     depends_on:
@@ -194,9 +194,9 @@ services:
       PGDATABASE: ${POSTGRES_DB}
     volumes:
       - ${BACKUP_DIR}:/backups
-      - ${UPLOADS_DATA_DIR}:/sources/uploads
-      - ${GRAFANA_DATA_DIR}:/sources/grafana
-      - ${CERTS_DATA_DIR}:/sources/certs
+      - uploads-data:/sources/uploads
+      - grafana-data:/sources/grafana
+      - certs-data:/sources/certs
       - ./.env:/sources/env:ro
     networks:
       - app-network
@@ -226,7 +226,7 @@ services:
     ports:
       - "${HTTPS_PORT}:${NGINX_HTTPS_PORT}"
     volumes:
-      - ${CERTS_DATA_DIR}:/etc/nginx/certs
+      - certs-data:/etc/nginx/certs
     networks:
       - app-network
     depends_on:
@@ -249,3 +249,10 @@ networks:
   app-network:
     name: ${NETWORK_NAME}
     driver: bridge
+
+volumes:
+  db-data:
+  uploads-data:
+  prometheus-data:
+  grafana-data:
+  certs-data:
