@@ -140,7 +140,7 @@ function GettingStarted() {
                 label="Workspace / Organization Name"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                placeholder="e.g. Acme Engineering"
+                placeholder="e.g. 42 Beirut"
                 required
                 maxLength={100}
                 disabled={create.busy}
