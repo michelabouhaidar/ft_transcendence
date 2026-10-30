@@ -4,6 +4,15 @@ import { PrismaClient } from "@prisma/client";
 import { readFile } from "fs/promises";
 import { metricsMiddleware, register } from "./services/metrics";
 
+import { authRouter } from "./routes/auth";
+import { onboardingRouter } from "./routes/onboarding";
+import { adminRouter } from "./routes/admin";
+import { invitationsRouter } from "./routes/invitations";
+import { usersRouter } from "./routes/users";
+import { orgsRouter } from "./routes/orgs";
+import { projectsRouter } from "./routes/projects";
+import { tasksRouter } from "./routes/tasks";
+
 export const prisma = new PrismaClient();
 
 const BACKUP_STATUS_FILE = "/backup-status/status.json";
@@ -79,6 +88,16 @@ export function createApp(): express.Express {
       status: "operational",
     });
   });
+
+  // Mount API routers
+  app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/admin", adminRouter);
+  app.use("/api/v1", invitationsRouter);
+  app.use("/api/v1", onboardingRouter);
+  app.use("/api/v1", usersRouter);
+  app.use("/api/v1", orgsRouter);
+  app.use("/api/v1", projectsRouter);
+  app.use("/api/v1", tasksRouter);
 
   // Health check endpoint conforming to NFR-30
   app.get("/api/v1/health", async (_req: Request, res: Response) => {
