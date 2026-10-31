@@ -6,7 +6,8 @@ import {
   DragOverlay,
   DragStartEvent,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useDroppable,
   useSensor,
@@ -63,8 +64,11 @@ export function BoardView({ tasks, visible, canEdit, onOpen, onMove, onCreateIn,
     if (!dragging) setColumns(toColumns(tasks));
   }, [tasks, dragging]);
 
+  // Mouse: drag after a 6px move. Touch: press and hold a card for 250ms to pick it up, so a normal
+  // swipe still scrolls the page and the columns (a single PointerSensor loses touches to scrolling).
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -74,7 +78,11 @@ export function BoardView({ tasks, visible, canEdit, onOpen, onMove, onCreateIn,
     return out;
   }, [columns, visible]);
 
-  const onDragStart = (e: DragStartEvent) => setDragging(tasks.find((t) => t.id === e.active.id) ?? null);
+  const onDragStart = (e: DragStartEvent) => {
+    setDragging(tasks.find((t) => t.id === e.active.id) ?? null);
+    // A short buzz on phones that support it, so a long-press pickup is felt.
+    if (typeof TouchEvent !== "undefined" && e.activatorEvent instanceof TouchEvent) navigator.vibrate?.(10);
+  };
 
   // Moving across columns while dragging, so the card previews in its new column.
   const onDragOver = (e: DragOverEvent) => {
@@ -249,7 +257,7 @@ function SortableCard({
           if (e.key === "Enter") onOpen(task);
           else listeners?.onKeyDown?.(e);
         }}
-        className={`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+        className={`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${canEdit ? "cursor-grab active:cursor-grabbing select-none [-webkit-touch-callout:none]" : "cursor-pointer"}`}
       >
         <CardBody
           task={task}
