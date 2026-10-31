@@ -9,7 +9,7 @@ import { useOnReconnect, useSocketEvents } from "../../context/RealtimeContext";
 interface InvitationsPanelProps {
   orgId: string;
   orgName: string;
-  /** Only a System Admin may invite an Org Admin (INV-01). */
+  /** Only a System Admin may invite an Org Admin. */
   canInviteOrgAdmin: boolean;
   /** Called after any change (invite, resend, revoke), e.g. to refresh counts. */
   onChange?: () => void;
@@ -25,8 +25,8 @@ const STATUS_LABELS: Record<InvitationState, string> = {
 };
 const ROLE_LABELS: Record<OrgInvitation["role"], string> = { OA: "Org Admin", MEMBER: "Member", VIEWER: "Viewer" };
 
-// INV-04: list, resend and revoke an organization's invitations, and invite
-// new people. Used by Org Admins (Invitations tab of /org/members) and System Admins (admin org page).
+// List, resend and revoke an organization's invitations, and invite new people. 
+// Used by Org Admins (Invitations tab of /org/members) and System Admins (admin org page).
 export function InvitationsPanel({ orgId, orgName, canInviteOrgAdmin, onChange }: InvitationsPanelProps) {
   const toast = useToast();
   const [invitations, setInvitations] = useState<OrgInvitation[] | null>(null);

@@ -33,7 +33,9 @@ export function NotificationBell({ allPath }: NotificationBellProps) {
   const label = unreadCount ? `Notifications (${badgeCount(unreadCount)} unread)` : "Notifications";
 
   return (
-    <div ref={containerRef} className="relative inline-flex">
+    // Not "relative" on phones: the panel then anchors to the (sticky) header and spans the screen
+    // instead of hanging off the bell and running past the left edge.
+    <div ref={containerRef} className="inline-flex sm:relative">
       <IconButton label={label} icon={<Bell className="w-4 h-4" />} aria-haspopup="dialog" aria-expanded={isOpen} onClick={() => setIsOpen((o) => !o)} />
       {unreadCount > 0 && (
         <span
@@ -48,7 +50,7 @@ export function NotificationBell({ allPath }: NotificationBellProps) {
         <div
           role="dialog"
           aria-label="Latest notifications"
-          className="absolute right-0 top-full mt-1.5 z-50 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-dark-card border border-zinc-200/90 dark:border-zinc-800/90 shadow-xl rounded-none animate-in fade-in zoom-in-95 duration-100"
+          className="absolute inset-x-2 top-full mt-1.5 sm:inset-x-auto sm:right-0 sm:w-80 sm:max-w-[calc(100vw-2rem)] z-50 bg-white dark:bg-dark-card border border-zinc-200/90 dark:border-zinc-800/90 shadow-xl rounded-none animate-in fade-in zoom-in-95 duration-100"
         >
           <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-b border-zinc-100 dark:border-zinc-800/80">
             <span className="text-xs font-semibold text-zinc-950 dark:text-white">Notifications</span>

@@ -13,7 +13,7 @@ interface TaskPanelProps {
   projectName?: string;
   number: number;
   assignees: Assignee[];
-  /** Bumped by the board when the project changed elsewhere (TSK-07). */
+  /** Bumped by the board when the project changed elsewhere. */
   refreshKey: number;
   onClose: () => void;
   onChanged: (task: Task) => void;
@@ -22,8 +22,8 @@ interface TaskPanelProps {
 
 type SaveState = "idle" | "saving" | "saved";
 
-// TSK-09: a wide, two-column task view. Every field saves as soon as it changes (version-checked,
-// §7.2); the title and description edit in place. Read-only for Viewers, who can still comment.
+// A wide, two-column task view. Every field saves as soon as it changes.
+// The title and description edit in place. Read-only for Viewers, who can still comment.
 export function TaskPanel({ projectKey, projectName, number, assignees, refreshKey, onClose, onChanged, onDeleted }: TaskPanelProps) {
   const toast = useToast();
   const { user } = useAuth();
@@ -50,7 +50,7 @@ export function TaskPanel({ projectKey, projectName, number, assignees, refreshK
     load();
   }, [load]);
 
-  // Someone else changed something (TSK-07). Fields being edited keep their local text.
+  // Someone else changed something. Fields being edited keep their local text.
   useEffect(() => {
     if (refreshKey > 0) load();
   }, [refreshKey]);
@@ -441,7 +441,7 @@ function InlineDescription({ value, editable, onSave }: { value: string; editabl
   );
 }
 
-// TSK-11: add, edit own ("edited"), delete own (Org Admins: any); deleted ones leave a placeholder.
+// Add, edit own ("edited"), delete own (Org Admins: any); deleted ones leave a placeholder.
 // Newest first, with the box to write on top.
 function Comments({ projectKey, number, refreshKey }: { projectKey: string; number: number; refreshKey: number }) {
   const toast = useToast();

@@ -387,8 +387,8 @@ function SignupView({ onClose, onSwitchView }: ViewProps) {
       )}
       <form onSubmit={signup} className="space-y-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="First Name" required placeholder="Alex" {...text("firstName")} />
-          <Input label="Last Name" required placeholder="Rivera" {...text("lastName")} />
+          <Input label="First Name" required placeholder="Walid" {...text("firstName")} />
+          <Input label="Last Name" required placeholder="Mougharbel" {...text("lastName")} />
         </div>
         <Input label="Email address" type="email" required placeholder="name@company.com" {...text("email")} />
         <PasswordPair password={password} confirm={confirm} setPassword={setPassword} setConfirm={setConfirm} labels={["Password", "Confirm Password"]} />

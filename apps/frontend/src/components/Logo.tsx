@@ -1,12 +1,14 @@
 interface LogoProps {
   size?: "sm" | "md";
   showWordmark?: boolean;
+  /** Extra classes for the TRENNO text, e.g. "hidden sm:inline" to drop it on phones. */
+  wordmarkClassName?: string;
 }
 
 const SIZES = { sm: { icon: 30, text: "text-lg" }, md: { icon: 38, text: "text-2xl" } };
 
 // Faceted geometric "T" emblem with the TRENNO wordmark.
-export function Logo({ size = "md", showWordmark = true }: LogoProps) {
+export function Logo({ size = "md", showWordmark = true, wordmarkClassName = "" }: LogoProps) {
   const { icon, text } = SIZES[size];
   return (
     <div className="flex items-center gap-3 select-none">
@@ -46,7 +48,7 @@ export function Logo({ size = "md", showWordmark = true }: LogoProps) {
         <rect x="36.5" y="6.5" width="5" height="5" transform="rotate(45 39 9)" className="fill-zinc-950 dark:fill-white transition-colors" />
         <rect x="37.5" y="7.5" width="3" height="3" transform="rotate(45 39 9)" className="fill-brand-600" />
       </svg>
-      {showWordmark && <span className={`font-bold tracking-[0.14em] uppercase text-zinc-950 dark:text-white ${text} font-sans transition-colors`}>TRENNO</span>}
+      {showWordmark && <span className={`font-bold tracking-[0.14em] uppercase text-zinc-950 dark:text-white ${text} font-sans transition-colors ${wordmarkClassName}`}>TRENNO</span>}
     </div>
   );
 }

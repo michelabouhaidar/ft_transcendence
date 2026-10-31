@@ -4,11 +4,12 @@ USER root
 
 # Copy provisioning configuration and pre-built dashboards
 COPY provisioning /etc/grafana/provisioning
-COPY dashboards /var/lib/grafana/dashboards
+# Outside /var/lib/grafana: GRAFANA_DATA_DIR is bind-mounted there and would hide them
+COPY dashboards /etc/grafana/dashboards
 
 # Ensure permissions
-RUN chown -R grafana:root /etc/grafana/provisioning /var/lib/grafana/dashboards && \
-    chmod -R 755 /var/lib/grafana/dashboards
+RUN chown -R grafana:root /etc/grafana/provisioning /etc/grafana/dashboards && \
+    chmod -R 755 /etc/grafana/dashboards
 
 USER grafana
 

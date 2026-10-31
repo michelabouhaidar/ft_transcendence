@@ -1,4 +1,5 @@
-import { KeyboardEvent, ReactNode, useId, useRef, useState } from "react";
+import { CSSProperties, KeyboardEvent, ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { useClickOutside } from "../lib/hooks";
 import { FieldLabel, FieldMessage, describedBy } from "./Field";
@@ -25,9 +26,45 @@ export interface SelectProps {
 export function Select({ label, value, onChange, options, placeholder = "Select an option...", disabled = false, error, helperText, className = "" }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [listStyle, setListStyle] = useState<CSSProperties | null>(null);
   const selectId = useId();
   const selected = options.find((o) => o.value === value);
-  useClickOutside([containerRef], () => setIsOpen(false), isOpen);
+  useClickOutside([containerRef, listRef], () => setIsOpen(false), isOpen);
+
+  // The list is rendered on <body> with fixed coordinates, so a scrolling parent (like a dialog body)
+  // can't clip it or grow a scrollbar; the list scrolls on its own instead. It opens upward when there's
+  // more room above, and follows the field when the page or dialog scrolls.
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setListStyle(null);
+      return;
+    }
+    const place = () => {
+      const r = buttonRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const gap = 6;
+      const margin = 8;
+      const below = window.innerHeight - r.bottom - gap - margin;
+      const above = r.top - gap - margin;
+      const openUp = below < 180 && above > below;
+      setListStyle({
+        position: "fixed",
+        left: r.left,
+        width: r.width,
+        maxHeight: Math.max(120, Math.min(288, openUp ? above : below)),
+        ...(openUp ? { bottom: window.innerHeight - r.top + gap } : { top: r.bottom + gap }),
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [isOpen]);
 
   // Enter/Space toggle, Escape closes, arrows step through the options.
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -52,6 +89,7 @@ export function Select({ label, value, onChange, options, placeholder = "Select 
     <div ref={containerRef} className={`relative w-full ${className}`}>
       <FieldLabel htmlFor={selectId} label={label} />
       <button
+        ref={buttonRef}
         id={selectId}
         type="button"
         disabled={disabled}
@@ -78,42 +116,47 @@ export function Select({ label, value, onChange, options, placeholder = "Select 
         <ChevronDown className={`h-4 w-4 text-zinc-400 dark:text-zinc-500 transition-transform duration-200 shrink-0 ${isOpen ? "rotate-180 text-brand-600" : ""}`} />
       </button>
 
-      {isOpen && (
-        <div
-          role="listbox"
-          className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-dark-card border border-zinc-200/90 dark:border-zinc-800/90 shadow-xl rounded-none max-h-72 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100"
-        >
-          {options.length === 0 && <div className="px-3 py-2 text-xs text-zinc-400 dark:text-zinc-500 text-center font-sans">No options available</div>}
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <div
-                key={option.value}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={`flex items-center justify-between px-3.5 py-2.5 text-xs transition-colors cursor-pointer select-none ${
-                  isSelected
-                    ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 font-semibold"
-                    : "text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-dark-elevated"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  {option.icon && <span className="shrink-0">{option.icon}</span>}
-                  <div className="min-w-0">
-                    <div className="leading-snug">{option.label}</div>
-                    {option.description && <div className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{option.description}</div>}
+      {isOpen &&
+        listStyle &&
+        createPortal(
+          <div
+            ref={listRef}
+            role="listbox"
+            style={listStyle}
+            className="z-[60] bg-white dark:bg-dark-card border border-zinc-200/90 dark:border-zinc-800/90 shadow-xl rounded-none overflow-y-auto overscroll-contain py-1 font-sans animate-in fade-in zoom-in-95 duration-100"
+          >
+            {options.length === 0 && <div className="px-3 py-2 text-xs text-zinc-400 dark:text-zinc-500 text-center font-sans">No options available</div>}
+            {options.map((option) => {
+              const isSelected = option.value === value;
+              return (
+                <div
+                  key={option.value}
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={`flex items-center justify-between px-3.5 py-2.5 text-xs transition-colors cursor-pointer select-none ${
+                    isSelected
+                      ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 font-semibold"
+                      : "text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-dark-elevated"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    {option.icon && <span className="shrink-0">{option.icon}</span>}
+                    <div className="min-w-0">
+                      <div className="leading-snug">{option.label}</div>
+                      {option.description && <div className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{option.description}</div>}
+                    </div>
                   </div>
+                  {isSelected && <Check className="h-4 w-4 text-brand-600 shrink-0 ml-2" />}
                 </div>
-                {isSelected && <Check className="h-4 w-4 text-brand-600 shrink-0 ml-2" />}
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>,
+          document.body
+        )}
 
       <FieldMessage id={selectId} error={error} helperText={helperText} />
     </div>

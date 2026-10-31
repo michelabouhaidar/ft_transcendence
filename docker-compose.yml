@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ${DB_DATA_DIR}:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_HOST_PORT}:${POSTGRES_PORT}"
     networks:
@@ -36,13 +36,27 @@ services:
       TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
       SEED_SA_EMAIL: ${SEED_SA_EMAIL}
       SEED_SA_PASSWORD: ${SEED_SA_PASSWORD}
+      BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_SECURE: ${SMTP_SECURE}
     volumes:
-      - ${UPLOADS_DATA_DIR}:/app/uploads
+      - uploads-data:/app/uploads
+      - ${BACKUP_DIR}/status:/backup-status:ro
     networks:
       - app-network
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:${BACKEND_PORT}/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   frontend:
     build:
@@ -52,6 +66,12 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:${FRONTEND_PORT}/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   prometheus:
     build:
@@ -67,11 +87,17 @@ services:
       - "--web.enable-lifecycle"
       - "--web.external-url=${PROMETHEUS_EXTERNAL_URL}"
     volumes:
-      - ${PROMETHEUS_DATA_DIR}:/prometheus
+      - prometheus-data:/prometheus
     networks:
       - app-network
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/prometheus/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   grafana:
     build:
@@ -88,11 +114,17 @@ services:
       GF_SERVER_ROOT_URL: ${GRAFANA_SERVER_ROOT_URL}
       GF_SERVER_SERVE_FROM_SUB_PATH: ${GRAFANA_SERVER_SERVE_FROM_SUB_PATH}
     volumes:
-      - ${GRAFANA_DATA_DIR}:/var/lib/grafana
+      - grafana-data:/var/lib/grafana
     networks:
       - app-network
     depends_on:
       - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   node-exporter:
     build:
@@ -105,12 +137,20 @@ services:
       - "--path.sysfs=/host/sys"
       - "--path.rootfs=/rootfs"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+      - "--collector.textfile.directory=/backup-status"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+      - ${BACKUP_DIR}/status:/backup-status:ro
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9100/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   postgres-exporter:
     build:
@@ -118,6 +158,9 @@ services:
       dockerfile: Dockerfile
     container_name: ${CONTAINER_NAME_POSTGRES_EXPORTER}
     restart: unless-stopped
+    command:
+      # v0.16.0 queries pg_stat_bgwriter columns that PostgreSQL 17 moved to pg_stat_checkpointer
+      - "--no-collector.stat_bgwriter"
     environment:
       DATA_SOURCE_NAME: ${POSTGRES_EXPORTER_DATA_SOURCE_NAME}
     networks:
@@ -125,6 +168,46 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9187/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: ${CONTAINER_NAME_BACKUP}
+    restart: unless-stopped
+    environment:
+      TZ: ${BACKUP_TZ}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE}
+      BACKUP_KEEP: ${BACKUP_KEEP}
+      BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS}
+      BACKUP_UID: ${BACKUP_UID}
+      PGHOST: ${POSTGRES_HOST}
+      PGPORT: ${POSTGRES_PORT}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ${BACKUP_DIR}:/backups
+      - uploads-data:/sources/uploads
+      - grafana-data:/sources/grafana
+      - certs-data:/sources/certs
+      - ./.env:/sources/env:ro
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 1m
+      timeout: 10s
+      start_period: 2m
 
   nginx:
     build:
@@ -143,16 +226,33 @@ services:
     ports:
       - "${HTTPS_PORT}:${NGINX_HTTPS_PORT}"
     volumes:
-      - ${CERTS_DATA_DIR}:/etc/nginx/certs
+      - certs-data:/etc/nginx/certs
     networks:
       - app-network
     depends_on:
-      - backend
-      - frontend
-      - prometheus
-      - grafana
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+      grafana:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsk", "-o", "/dev/null", "https://127.0.0.1:${NGINX_HTTPS_PORT}/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 networks:
   app-network:
     name: ${NETWORK_NAME}
     driver: bridge
+
+volumes:
+  db-data:
+  uploads-data:
+  prometheus-data:
+  grafana-data:
+  certs-data:

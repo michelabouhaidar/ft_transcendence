@@ -13,7 +13,7 @@ interface FriendButtonProps {
   size?: "sm" | "md";
 }
 
-// Add / pending / accept-decline / friends+remove, shared by the profile page and the directory (USR-05).
+// Add / pending / accept-decline / friends+remove, shared by the profile page and the directory.
 export function FriendButton({ userId, name, state, friendshipId, onChanged, size = "sm" }: FriendButtonProps) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);

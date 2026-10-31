@@ -94,7 +94,7 @@ export function DueDate({ task, className = "" }: { task: Pick<Task, "dueDate" |
   );
 }
 
-// TSK-07 / RT-02…04: the open board joins its project room and hears about other people's changes.
+// The open board joins its project room and hears about other people's changes.
 // Bursts are batched (100 ms) into one `onChange(events)`; the caller refetches. After a reconnect the
 // room is rejoined and `onChange` gets a "reconnect" event, since anything may have been missed.
 interface ProjectLiveEvent {
@@ -176,7 +176,7 @@ export function useProjectLive(projectKey: string, onChange: (events: ProjectLiv
   );
 }
 
-// TSK-01: create a task. Status can be preset (e.g. from a column's "+").
+// Create a task. Status can be preset (e.g. from a column's "+").
 export function CreateTaskDialog({
   isOpen,
   onClose,

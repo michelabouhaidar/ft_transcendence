@@ -14,12 +14,12 @@ interface InviteDialogProps {
   onClose: () => void;
   orgId: string;
   orgName: string;
-  /** Only a System Admin may invite an Org Admin (INV-01). */
+  /** Only a System Admin may invite an Org Admin. */
   canInviteOrgAdmin: boolean;
   onInvited: () => void;
 }
 
-// INV-01: invite someone by email. They get a single-use link valid 7 days.
+// Invite someone by email. They get a single-use link valid 7 days.
 export function InviteDialog({ isOpen, onClose, orgId, orgName, canInviteOrgAdmin, onInvited }: InviteDialogProps) {
   const toast = useToast();
   const [email, setEmail] = useState("");

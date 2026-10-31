@@ -8,7 +8,7 @@ import { plural } from "../../lib/format";
 
 const PROJECT_KEY_RE = /^[A-Z][A-Z0-9]{1,5}$/;
 
-// PRJ-02 card numbers: % Done bar, open and overdue counts.
+// Card numbers: % Done bar, open and overdue counts.
 export function ProjectProgress({ project, className = "" }: { project: Project; className?: string }) {
   return (
     <div className={className}>
@@ -56,7 +56,7 @@ interface ProjectFormDialogProps {
   orgId?: string;
 }
 
-// PRJ-01 / PRJ-03: name, key (fixed once created), description and optional dates.
+// Name, key (fixed once created), description and optional dates.
 export function ProjectFormDialog({ isOpen, onClose, onSaved, project, orgId }: ProjectFormDialogProps) {
   const toast = useToast();
   const isEdit = Boolean(project);
@@ -114,7 +114,7 @@ export function ProjectFormDialog({ isOpen, onClose, onSaved, project, orgId }: 
           label="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Website relaunch"
+          placeholder="e.g. ft_transcendence "
           required
           minLength={2}
           maxLength={100}
@@ -125,12 +125,12 @@ export function ProjectFormDialog({ isOpen, onClose, onSaved, project, orgId }: 
           label="Key"
           value={key}
           onChange={(e) => setKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-          placeholder="e.g. WEB"
+          placeholder="e.g. TRSD"
           required
           maxLength={6}
           disabled={saving || isEdit}
           error={keyError}
-          helperText={isEdit ? "The key can't be changed." : "Prefix for task numbers, like WEB-12. It can't be changed later."}
+          helperText={isEdit ? "The key can't be changed." : "Prefix for task numbers, like TRSD-12. It can't be changed later."}
         />
         <Textarea
           label="Description (optional)"
@@ -156,7 +156,7 @@ export function ProjectFormDialog({ isOpen, onClose, onSaved, project, orgId }: 
   );
 }
 
-// PRJ-05: typed key, with the consequences listed first.
+// Typed key, with the consequences listed first.
 export function DeleteProjectDialog({
   project,
   isOpen,

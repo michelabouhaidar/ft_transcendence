@@ -31,6 +31,7 @@ export interface Task {
   commentCount: number;
 }
 
+//Used for updates; Every field is optional, so you can send just one change.
 export interface TaskInput {
   title?: string;
   description?: string | null;
@@ -42,7 +43,7 @@ export interface TaskInput {
 
 export interface Assignee extends TaskPerson {
   role: "OA" | "MEMBER";
-  // Friends of the viewer come first and carry their online status
+  // Friends appear first in the picker and carry their online status/presence.
   isFriend?: boolean;
   presence?: Presence | null;
 }
@@ -59,7 +60,7 @@ export interface TaskComment {
   canDelete: boolean;
 }
 
-// A 409 carries the task as it is now.
+// A 409 checks the latest version.
 export type TaskApiError = ApiError & { task?: Task };
 
 const base = (key: string) => `/api/v1/projects/${encodeURIComponent(key)}`;

@@ -21,7 +21,7 @@ const MAIN = {
 
 // Shell for signed-in pages: sidebar, header, footer, account and legal dialogs.
 export function AppLayout({ variant = "workspace", trail, children }: AppLayoutProps) {
-  const { user, organization, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { navigate } = useApp();
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -37,11 +37,11 @@ export function AppLayout({ variant = "workspace", trail, children }: AppLayoutP
             {hasSidebar ? (
               <IconButton label="Open sidebar navigation" icon={<Menu className="w-5 h-5" />} onClick={() => setMobileOpen(true)} className="md:hidden" />
             ) : (
-              <div onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer select-none" title="Trenno Home">
-                <Logo size="sm" />
+              <div onClick={() => navigate("/")} className="flex items-center gap-2 shrink-0 cursor-pointer select-none" title="Trenno Home">
+                {/* Emblem only on phones, so the header icons have room. */}
+                <Logo size="sm" wordmarkClassName="hidden sm:inline" />
               </div>
             )}
-            {variant === "workspace" && <span className="font-semibold text-sm text-zinc-950 dark:text-white font-sans">{organization?.name}</span>}
             {variant === "admin" && (
               <nav aria-label="Breadcrumb" className="text-sm text-zinc-500 dark:text-zinc-400 truncate">
                 {trail}
@@ -49,7 +49,7 @@ export function AppLayout({ variant = "workspace", trail, children }: AppLayoutP
             )}
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {variant === "workspace" && <HeaderSearch />}
             <NotificationBell allPath={variant === "admin" ? "/admin/notifications" : "/notifications"} />
             <ThemeToggle />
@@ -58,13 +58,16 @@ export function AppLayout({ variant = "workspace", trail, children }: AppLayoutP
               variant="ghost"
               size="sm"
               leftIcon={<LogOut className="w-3.5 h-3.5" />}
-              className="text-xs"
+              className="text-xs px-2 sm:px-3"
+              aria-label="Sign out"
+              title="Sign out"
               onClick={async () => {
                 await logout();
                 navigate("/");
               }}
             >
-              Sign Out
+              {/* Icon only on phones so the header row fits. */}
+              <span className="hidden sm:inline">Sign Out</span>
             </Button>
           </div>
         </header>
@@ -88,7 +91,7 @@ export function AppLayout({ variant = "workspace", trail, children }: AppLayoutP
   );
 }
 
-// SRCH-01: the header box opens the search page with the text.
+// The header box opens the search page with the text.
 function HeaderSearch() {
   const { navigate } = useApp();
   const [query, setQuery] = useState("");

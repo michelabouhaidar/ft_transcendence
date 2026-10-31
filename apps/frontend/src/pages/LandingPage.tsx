@@ -102,7 +102,8 @@ export function LandingPage() {
       <header className="sticky top-0 z-50 w-full border-b border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-md text-zinc-900 dark:text-white transition-colors duration-200">
         <div className={`${container} h-20 flex items-center justify-between gap-4`}>
           <a href="/" onClick={homeLink} className="flex items-center group shrink-0">
-            <Logo />
+            {/* Emblem only on phones, so Sign In / Sign Up and the theme toggle fit. */}
+            <Logo wordmarkClassName="hidden sm:inline" />
           </a>
 
           <nav className="hidden lg:flex items-center gap-7 text-xs font-medium font-sans text-zinc-600 dark:text-zinc-300">
@@ -124,7 +125,7 @@ export function LandingPage() {
                   title="Open Workspace"
                   className="flex items-center gap-2.5 p-1 rounded-none hover:bg-zinc-100 dark:hover:bg-dark-card border border-transparent hover:border-zinc-200 dark:hover:border-dark-border transition-all cursor-pointer group focus:outline-none"
                 >
-                  <Avatar size="sm" name={`${user.firstName} ${user.lastName}`} src={user.avatarPath || undefined} />
+                  <Avatar size="sm" name={`${user.firstName} ${user.lastName}`} colorSeed={user.id} src={user.avatarPath || undefined} />
                   <span className="hidden md:inline text-xs font-semibold text-zinc-900 dark:text-white font-sans group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                     {user.firstName} {user.lastName}
                   </span>
@@ -181,6 +182,7 @@ export function LandingPage() {
               </p>
             </div>
           </div>
+
         </section>
 
         {/* Features */}

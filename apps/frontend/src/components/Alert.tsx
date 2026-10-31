@@ -3,7 +3,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react"
 
 export interface AlertProps {
   variant?: "error" | "warning" | "info" | "success";
-  /** "inline" drops the box: icon, title and text sit directly in the flow (used in auth forms). */
+  // "inline" has no box: icon, title and text sit directly in the flow (used in auth forms).
   appearance?: "boxed" | "inline";
   title?: string;
   children: ReactNode;
@@ -52,7 +52,7 @@ export function Alert({ variant = "error", appearance = "boxed", title, children
       role="alert"
       aria-live="polite"
       className={`flex items-start font-sans ${
-        inline ? "gap-2 text-xs" : `gap-2.5 relative p-3 rounded-none border ${s.box} transition-all animate-in fade-in duration-150`
+        inline ? "gap-2 text-xs" : `gap-2.5 relative p-3 rounded-none border ${s.box} transition-all duration-150`
       } ${className}`}
     >
       <div className={`shrink-0 mt-0.5 ${s.icon}`}>{icon || <s.Icon className="w-4 h-4" />}</div>
