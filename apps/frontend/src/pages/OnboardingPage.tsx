@@ -440,7 +440,7 @@ function WorkspaceHome() {
               filteredMembers.map((m) => (
                 <div key={m.id} className={rowClass}>
                   <div className="flex items-center gap-3.5">
-                    <Avatar size="md" name={`${m.firstName} ${m.lastName}`} src={m.avatarPath || undefined} />
+                    <Avatar size="md" name={`${m.firstName} ${m.lastName}`} src={m.avatarPath || undefined} colorSeed={m.userId} />
                     <div>
                       <div className="font-semibold text-sm text-zinc-950 dark:text-white font-sans flex items-center gap-2">
                         <span>

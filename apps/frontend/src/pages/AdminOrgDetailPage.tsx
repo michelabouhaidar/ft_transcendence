@@ -177,7 +177,7 @@ export function AdminOrgDetailPage({ orgId }: { orgId: string }) {
                       onClick={() => navigate(`/admin/users/${m.userId}`)}
                       className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-zinc-50 dark:hover:bg-dark-elevated transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
                     >
-                      <Avatar size="sm" name={m.fullName} src={m.avatarPath || undefined} />
+                      <Avatar size="sm" name={m.fullName} src={m.avatarPath || undefined} colorSeed={m.userId} />
                       <span className="min-w-0 flex-1">
                         <span className="block font-semibold text-sm text-zinc-900 dark:text-white truncate">{m.fullName}</span>
                         <span className="block text-xs text-zinc-500 dark:text-zinc-400 truncate">{m.email}</span>

@@ -60,7 +60,7 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
           {/* Identity + actions */}
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 pb-6 mb-6 border-b border-zinc-200 dark:border-dark-border">
             <div className="flex items-start gap-4 min-w-0">
-              <Avatar size="xl" name={user.fullName} src={user.avatarPath || undefined} className={isDeleted ? "opacity-50" : ""} />
+              <Avatar size="xl" name={user.fullName} src={user.avatarPath || undefined} colorSeed={user.id} className={isDeleted ? "opacity-50" : ""} />
               <div className="min-w-0">
                 <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white break-words">
                   {user.fullName}
