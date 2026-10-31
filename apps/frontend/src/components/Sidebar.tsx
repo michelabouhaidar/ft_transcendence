@@ -1,10 +1,11 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Bell, Building2, FolderKanban, Lock, PanelLeftClose, Rocket, Search, Settings, ShieldAlert, UserCheck, Users, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 import { Avatar } from "./Avatar";
 import { IconButton } from "./IconButton";
 import { Logo } from "./Logo";
+import { useMediaQuery } from "../lib/hooks";
 
 interface SidebarProps {
   onOpenAccountModal: () => void;
@@ -42,6 +43,16 @@ export function Sidebar({ onOpenAccountModal, isMobileOpen, onCloseMobile }: Sid
   const { user, organization, role, isSA } = useAuth();
   const { path, navigate } = useApp();
   const [collapsed, setCollapsed] = useState(false);
+  // "md" breakpoint: at this width and above the sidebar is docked; below it's a slide-in drawer.
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  // Icon-only mode is a desktop choice. The phone drawer always shows labels, and the
+  // desktop setting comes back when the screen is wide again.
+  const compact = collapsed && isDesktop;
+
+  // Going from phone to desktop width with the drawer open: close it so its backdrop state doesn't linger.
+  useEffect(() => {
+    if (isDesktop && isMobileOpen) onCloseMobile();
+  }, [isDesktop, isMobileOpen, onCloseMobile]);
   const isUnaffiliated = !organization || role === "U";
 
   // System Admins get the Admin menu only; the Organization menu needs an org (§4.1, §4.3).
@@ -61,20 +72,20 @@ export function Sidebar({ onOpenAccountModal, isMobileOpen, onCloseMobile }: Sid
       <aside
         aria-label="Main Navigation"
         className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col justify-between bg-white dark:bg-dark-bg border-r border-zinc-200/80 dark:border-dark-border/80 transition-all duration-200 ease-in-out md:static ${
-          collapsed ? "md:w-20" : "md:w-64"
+          compact ? "md:w-20" : "md:w-64"
         } ${isMobileOpen ? "translate-x-0 w-72 shadow-2xl" : "-translate-x-full md:translate-x-0 w-64"}`}
       >
         {/* Logo and workspace */}
         <div className="flex flex-col border-b border-zinc-200/80 dark:border-dark-border/80">
-          <div className={`h-16 flex items-center transition-all ${collapsed ? "px-2 justify-center" : "px-4 justify-between"}`}>
+          <div className={`h-16 flex items-center transition-all ${compact ? "px-2 justify-center" : "px-4 justify-between"}`}>
             <div
-              onClick={() => (collapsed ? setCollapsed(false) : navigate("/"))}
+              onClick={() => (compact ? setCollapsed(false) : navigate("/"))}
               className="flex items-center gap-2.5 cursor-pointer select-none"
-              title={collapsed ? "Expand sidebar" : "Trenno Home"}
+              title={compact ? "Expand sidebar" : "Trenno Home"}
             >
-              <Logo size="sm" showWordmark={!collapsed} />
+              <Logo size="sm" showWordmark={!compact} />
             </div>
-            {!collapsed && (
+            {!compact && (
               <div className="flex items-center gap-1">
                 <IconButton label="Collapse sidebar" icon={<PanelLeftClose className="w-4 h-4" />} onClick={() => setCollapsed(true)} className="hidden md:inline-flex" />
                 <IconButton label="Close navigation sidebar" icon={<X className="w-5 h-5" />} onClick={onCloseMobile} size="sm" className="md:hidden" />
@@ -82,23 +93,23 @@ export function Sidebar({ onOpenAccountModal, isMobileOpen, onCloseMobile }: Sid
             )}
           </div>
 
-          <div className={`px-4 py-3 border-t border-zinc-200/80 dark:border-dark-border/80 flex items-center ${collapsed ? "justify-center" : isUnaffiliated ? "gap-2" : "gap-3"}`}>
+          <div className={`px-4 py-3 border-t border-zinc-200/80 dark:border-dark-border/80 flex items-center ${compact ? "justify-center" : isUnaffiliated ? "gap-2" : "gap-3"}`}>
             {!isUnaffiliated ? (
               <>
                 <div className="h-7 w-7 rounded-none bg-brand-600 text-white font-bold font-sans text-[11px] flex items-center justify-center shrink-0 select-none">
                   {organization.name.substring(0, 2).toUpperCase()}
                 </div>
-                {!collapsed && <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate">{organization.name}</span>}
+                {!compact && <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate">{organization.name}</span>}
               </>
             ) : (
               <>
                 {isSA ? <ShieldAlert className="w-4 h-4 text-brand-600 shrink-0" /> : <Rocket className="w-4 h-4 text-brand-600 shrink-0" />}
-                {!collapsed && <span className="text-xs text-zinc-500 dark:text-zinc-400">{isSA ? "Platform administration" : "Unaffiliated User"}</span>}
+                {!compact && <span className="text-xs text-zinc-500 dark:text-zinc-400">{isSA ? "Platform administration" : "Unaffiliated User"}</span>}
               </>
             )}
           </div>
 
-          {role === "VIEWER" && !collapsed && (
+          {role === "VIEWER" && !compact && (
             <div className="px-4 py-1.5 bg-warning-50 dark:bg-warning-950/40 border-t border-warning-200 dark:border-warning-900/60 text-[11px] font-sans font-medium text-warning-700 dark:text-warning-300 flex items-center gap-1.5">
               <Lock className="w-3 h-3 shrink-0" />
               <span>Read-Only Privileges</span>
@@ -110,7 +121,7 @@ export function Sidebar({ onOpenAccountModal, isMobileOpen, onCloseMobile }: Sid
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
           {sections.map((section) => (
             <div key={section.title} className={`space-y-1 ${section.className ?? ""}`}>
-              {!collapsed && <div className="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{section.title}</div>}
+              {!compact && <div className="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{section.title}</div>}
               {section.items.map((item) => (
                 <button
                   key={item.path}
@@ -124,10 +135,10 @@ export function Sidebar({ onOpenAccountModal, isMobileOpen, onCloseMobile }: Sid
                     item.active(path)
                       ? `${section.accent} text-white`
                       : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-dark-card hover:text-zinc-950 dark:hover:text-white"
-                  } ${collapsed ? "justify-center" : ""}`}
+                  } ${compact ? "justify-center" : ""}`}
                 >
                   {item.icon}
-                  {!collapsed && <span>{item.label}</span>}
+                  {!compact && <span>{item.label}</span>}
                 </button>
               ))}
             </div>
@@ -135,17 +146,17 @@ export function Sidebar({ onOpenAccountModal, isMobileOpen, onCloseMobile }: Sid
         </nav>
 
         {/* Account */}
-        <div className={`p-3 border-t border-zinc-200/80 dark:border-dark-border/80 flex gap-1 ${collapsed ? "flex-col items-center" : "items-center"}`}>
+        <div className={`p-3 border-t border-zinc-200/80 dark:border-dark-border/80 flex gap-1 ${compact ? "flex-col items-center" : "items-center"}`}>
           <button
             type="button"
             onClick={onOpenAccountModal}
             title="Account Settings"
             className={`min-w-0 p-2.5 bg-transparent hover:bg-zinc-100 dark:hover:bg-dark-card transition-colors flex items-center gap-3 cursor-pointer text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
-              collapsed ? "justify-center" : "flex-1"
+              compact ? "justify-center" : "flex-1"
             }`}
           >
             <Avatar size="sm" colorSeed={user?.id} name={user ? `${user.firstName} ${user.lastName}` : "User"} src={user?.avatarPath || undefined} />
-            {!collapsed && (
+            {!compact && (
               <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200 truncate group-hover:text-zinc-950 dark:group-hover:text-white transition-colors">
                 {user?.firstName} {user?.lastName}
               </span>

@@ -346,6 +346,7 @@ function InviteUserDialog({ isOpen, onClose, orgs }: { isOpen: boolean; onClose:
       isOpen={isOpen}
       onClose={onClose}
       title="Invite user"
+      maxWidth="xl"
       description="They get an email with a link to create their account. Invitations expire after 7 days."
       onSubmit={submit}
       submitLabel="Send invitation"
