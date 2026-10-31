@@ -294,7 +294,7 @@ export function LegalPage({ doc: id }: { doc: LegalDocId }) {
       <header className="sticky top-0 z-40 border-b border-zinc-200 dark:border-dark-border bg-white/95 dark:bg-dark-bg/95 backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <a href="/" onClick={goHome} aria-label="Trenno home" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
-            <Logo size="sm" />
+            <Logo size="sm" wordmarkClassName="hidden sm:inline" />
           </a>
           <div className="flex items-center gap-2">
             <ThemeToggle />

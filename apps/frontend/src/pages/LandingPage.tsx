@@ -102,7 +102,8 @@ export function LandingPage() {
       <header className="sticky top-0 z-50 w-full border-b border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-md text-zinc-900 dark:text-white transition-colors duration-200">
         <div className={`${container} h-20 flex items-center justify-between gap-4`}>
           <a href="/" onClick={homeLink} className="flex items-center group shrink-0">
-            <Logo />
+            {/* Emblem only on phones, so Sign In / Sign Up and the theme toggle fit. */}
+            <Logo wordmarkClassName="hidden sm:inline" />
           </a>
 
           <nav className="hidden lg:flex items-center gap-7 text-xs font-medium font-sans text-zinc-600 dark:text-zinc-300">
